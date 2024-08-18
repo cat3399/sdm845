@@ -6,11 +6,24 @@
  * Copyright (c) 2024, Jacob Hrbek <kreyren@fsfe.org>
  */
 
+/* TODO: Figure out if anything in https://github.com/mickaelmendes50/kernel_xiaomi_sdm845/blob/quartz/arch/arm64/boot/dts/qcom/ursa-p0-camera-sensor-mtp.dtsi is helpful or not */
+
 /dts-v1/;
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
+
+#include <dt-bindings/input/linux-event-codes.h>
+#include <dt-bindings/leds/common.h>
+#include <dt-bindings/regulator/qcom,rpmh-regulator.h>
+#include <dt-bindings/sound/qcom,q6afe.h>
+#include <dt-bindings/sound/qcom,q6asm.h>
+#include <dt-bindings/sound/qcom,q6voice.h>
+
 #include "sdm845.dtsi"
+#include "sdm845-wcd9340.dtsi"
+#include "pm8998.dtsi"
+#include "pmi8998.dtsi"
 
 / {
 	model = "Xiaomi Mi 8 Pro";
