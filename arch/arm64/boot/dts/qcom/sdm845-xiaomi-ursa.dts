@@ -272,7 +272,7 @@
 	qcom,imp-res-offset-value = <8>;
 	qcom,hstx-trim-value = <QUSB2_V2_HSTX_TRIM_21_6_MA>;
 	qcom,preemphasis-level = <QUSB2_V2_PREEMPHASIS_5_PERCENT>;
-	*/ TODO: Pending USB-C Tests */
+	/* TODO: Pending USB-C Tests */
 	qcom,preemphasis-width = <QUSB2_V2_PREEMPHASIS_WIDTH_NONE>;
 };
 
