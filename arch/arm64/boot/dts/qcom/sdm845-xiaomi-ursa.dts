@@ -146,7 +146,7 @@
 
 &adsp_pas {
 	status = "okay";
-	firmware-name = "qcom/sdm845/mi8/adsp.mbn";
+	firmware-name = "qcom/sdm845/adsp.mbn";
 };
 
 &apps_rsc {
@@ -231,7 +231,7 @@
 /* Modem/wifi*/
 &mss_pil {
 	status = "okay";
-	firmware-name = "qcom/sdm845/mi8/mba.mbn", "qcom/sdm845/mi8/modem.mbn";
+	firmware-name = "qcom/sdm845/mba.mbn", "qcom/sdm845/modem_nm.mbn";
 };
 
 &qupv3_id_1 {
@@ -277,7 +277,5 @@
 };
 
 &venus {
-	status = "okay";
-};
 	status = "okay";
 };
