@@ -19,3 +19,29 @@
 	// REVIEW(Krey): From https://github.com/LineageOS/android_kernel_xiaomi_sdm845/blob/lineage-21/arch/arm64/boot/dts/qcom/dipper-mp-v2.1.dts#L25
 	qcom,board-id = <55 0>;
 };
+
+&display_panel {
+	compatible = "samsung,ea8074";
+	status = "okay";
+};
+
+&i2c14 {
+	status = "okay";
+
+	touchscreen@49 {
+		compatible = "focaltech,ft8719";
+		reg = <0x49>;
+
+		interrupts-extended = <&tlmm 31 IRQ_TYPE_EDGE_FALLING>;
+		reset-gpios = <&tlmm 32 GPIO_ACTIVE_LOW>;
+
+		iovcc-supply = <&vreg_l14a_1p8>;
+
+		pinctrl-0 = <&ts_int_default &ts_reset_default>;
+		pinctrl-1 = <&ts_int_sleep &ts_reset_sleep>;
+		pinctrl-names = "default", "sleep";
+
+		touchscreen-size-x = <1080>;
+		touchscreen-size-y = <2248>;
+	};
+};

@@ -34,7 +34,6 @@ struct ss_notch_fhd_ea8074 {
 	struct regulator_bulk_data supplies[ARRAY_SIZE(regulator_names)];
 
 	struct gpio_desc *reset_gpio;
-	bool prepared;
 };
 
 static inline
@@ -160,8 +159,9 @@ static int ss_notch_fhd_ea8074_prepare(struct drm_panel *panel)
 	struct device *dev = &ctx->dsi->dev;
 	int ret;
 
-	if (ctx->prepared)
-		return 0;
+	ret = regulator_bulk_enable(ARRAY_SIZE(ctx->supplies), ctx->supplies);
+	if (ret < 0)
+		return ret;
 
 	ss_notch_fhd_ea8074_reset(ctx);
 
@@ -172,7 +172,6 @@ static int ss_notch_fhd_ea8074_prepare(struct drm_panel *panel)
 		return ret;
 	}
 
-	ctx->prepared = true;
 	return 0;
 }
 
@@ -189,7 +188,6 @@ static int ss_notch_fhd_ea8074_unprepare(struct drm_panel *panel)
 
 	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
 
-	ctx->prepared = false;
 	return 0;
 }
 
@@ -274,6 +272,7 @@ static int ss_notch_fhd_ea8074_probe(struct mipi_dsi_device *dsi)
 
 	drm_panel_init(&ctx->panel, dev, &ss_notch_fhd_ea8074_panel_funcs,
 		       DRM_MODE_CONNECTOR_DSI);
+	ctx->panel.prepare_prev_first = true;
 
 	ret = drm_panel_of_backlight(&ctx->panel);
 	if (ret)
@@ -302,7 +301,7 @@ static void ss_notch_fhd_ea8074_remove(struct mipi_dsi_device *dsi)
 
 	drm_panel_remove(&ctx->panel);
 
-	return;
+
 }
 
 static const struct of_device_id ss_notch_fhd_ea8074_of_match[] = {

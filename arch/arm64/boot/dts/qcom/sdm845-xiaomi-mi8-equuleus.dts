@@ -46,6 +46,33 @@
 	};
 };
 
+&display_panel {
+	compatible = "samsung,ea8074";
+	status = "okay";
+};
+
+&i2c14 {
+	status = "okay";
+
+	touchscreen@49 {
+		compatible = "focaltech,ft8719";
+		reg = <0x49>;
+
+		interrupts-extended = <&tlmm 31 IRQ_TYPE_EDGE_FALLING>;
+		reset-gpios = <&tlmm 32 GPIO_ACTIVE_LOW>;
+
+		iovcc-supply = <&vreg_l14a_1p8>;
+
+		pinctrl-0 = <&ts_int_default &ts_reset_default>;
+		pinctrl-1 = <&ts_int_sleep &ts_reset_sleep>;
+		pinctrl-names = "default", "sleep";
+
+		touchscreen-size-x = <1080>;
+		touchscreen-size-y = <2248>;
+	};
+};
+
+
 // REVIEW(Krey): I feels like this should be converted on a new method that uses `regulators-{0,1,2}`, but i don't know how to do that in a functional way
 &apps_rsc {
 	pm8998-rpmh-regulators {
