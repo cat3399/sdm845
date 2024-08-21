@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * SDM845 Xiaomi Mi 8 Explorer Edition (ursa) device tree
+ * SDM845 Xiaomi Mi 8 Family Device Tree Include
  *
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2024, Jacob Hrbek <kreyren@fsfe.org>
