@@ -157,6 +157,310 @@
 	firmware-name = "qcom/sdm845/mi8/adsp.mbn";
 };
 
+// FIXME-QA(Krey): This configuration seems to be shared with other devices and should probably be moved in DTSI
+&apps_rsc {
+	regulators-0 {
+		// REVIEW(Krey): In schematics this is labeled as PM845?
+		compatible = "qcom,pm8998-rpmh-regulators";
+		qcom,pmic-id = "a";
+
+		vdd-s1-supply = <&vph_pwr>; // VDD_S1
+		vdd-s2-supply = <&vph_pwr>; // VDD_S2
+		vdd-s3-supply = <&vph_pwr>; // VDD_S3
+		vdd-s4-supply = <&vph_pwr>; // VDD_S4
+		vdd-s5-supply = <&vph_pwr>; // VDD_S5
+		vdd-s6-supply = <&vph_pwr>; // VDD_S6
+		vdd-s7-supply = <&vph_pwr>; // VDD_S7
+		vdd-s8-supply = <&vph_pwr>; // VDD_S8
+		vdd-s9-supply = <&vph_pwr>; // VDD_S9
+		vdd-s10-supply = <&vph_pwr>; // VDD_S10
+		vdd-s11-supply = <&vph_pwr>; // VDD_S11
+		vdd-s12-supply = <&vph_pwr>; // VDD_S12
+		vdd-s13-supply = <&vph_pwr>; // VDD_S13
+
+		vdd-l1-l27-supply = <&vreg_s7a_1p025>; // VDD_L1_27
+		vdd-l2-l8-l17-supply = <&vreg_s3a_1p35>; // VDD_L2_8_17
+		vdd-l3-l11-supply = <&vreg_s7a_1p025>; // VDD_L3_11
+		vdd-l4-l5-supply = <&vreg_s7a_1p025>; // VDD_L4_5
+		vdd-l6-supply = <&vph_pwr>; // VDD_L6
+		vdd-l7-l12-l14-l15-supply = <&vreg_s5a_2p04>; // VDD_L7_12_14_15
+		vdd-l9-supply = <&vreg_bob>; // VDD_L9
+		vdd-l10-l23-l25-supply = <&vreg_bob>; // VDD_L10_23_25
+		vdd-l13-l19-l21-supply = <&vreg_bob>; // VDD_L13_19_21
+		vdd-l16-l28-supply = <&vreg_bob>; // VDD_L16_28
+		vdd-l18-l22-supply = <&vreg_bob>; // VDD_L18_22
+		vdd-l20-l24-supply = <&vreg_bob>; // VDD_L20_24
+		vdd-l26-supply = <&vreg_s3a_1p35>; // VDD_L26
+
+		vin-lvs-1-2-supply = <&vreg_s4a_1p8>; // VIN_LVS_1_2
+
+		// TODO(Krey): OnePlus-common has this different and juding by schematics it's more accurate than these which feel like a sane defaults.. They likely invested more time into this so ask the devs for details
+
+		// REVIEW(Krey): Comparing this to oneplus the `vreg_s3a_1p35` exists in the schematics, but `vreg_s2a_1p125` does not.
+		vreg_s2a_1p125: smps2 {
+			regulator-min-microvolt = <1100000>;
+			regulator-max-microvolt = <1100000>;
+		};
+
+		vreg_s3a_1p35: smps3 {
+			regulator-min-microvolt = <1352000>;
+			regulator-max-microvolt = <1352000>;
+		};
+
+		vreg_s5a_2p04: smps5 {
+			regulator-min-microvolt = <1904000>;
+			regulator-max-microvolt = <2040000>;
+		};
+
+		vreg_s7a_1p025: smps7 {
+			regulator-min-microvolt = <900000>;
+			regulator-max-microvolt = <1028000>;
+		};
+
+		// REVIEW(Krey): What to do with these? Should they be assigned or why is it declared this way?
+		vdd_qusb_hs0: // Goes to VREG_L1A_0P88
+		vdda_hp_pcie_core: // Goes to VREG_L1A_0P88
+		vdda_mipi_csi0_0p9: // Goes to VREG_L1A_0P88
+		vdda_mipi_csi1_0p9:
+		vdda_mipi_csi2_0p9:
+		vdda_mipi_dsi0_pll:
+		vdda_mipi_dsi1_pll:
+		vdda_qlink_lv:
+		vdda_qlink_lv_ck:
+		vdda_qrefs_0p875:
+		vdda_pcie_core:
+		vdda_pll_cc_ebi01:
+		vdda_pll_cc_ebi23:
+		vdda_sp_sensor:
+		vdda_ufs1_core:
+		vdda_ufs2_core:
+		vdda_usb1_ss_core:
+		vdda_usb2_ss_core:
+		vreg_l1a_0p875: ldo1 {
+			regulator-min-microvolt = <880000>;
+			regulator-max-microvolt = <880000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vddpx_10:
+		vreg_l2a_1p2: ldo2 {
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			regulator-always-on;
+		};
+
+		vreg_l3a_1p0: ldo3 {
+			regulator-min-microvolt = <1000000>;
+			regulator-max-microvolt = <1000000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vdd_wcss_cx:
+		vdd_wcss_mx:
+		vdda_wcss_pll:
+		vreg_l5a_0p8: ldo5 {
+			regulator-min-microvolt = <800000>;
+			regulator-max-microvolt = <800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vddpx_13:
+		vreg_l6a_1p8: ldo6 {
+			regulator-min-microvolt = <1856000>;
+			regulator-max-microvolt = <1856000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l7a_1p8: ldo7 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l8a_1p2: ldo8 {
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1248000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l9a_1p8: ldo9 {
+			regulator-min-microvolt = <1704000>;
+			regulator-max-microvolt = <2928000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l10a_1p8: ldo10 {
+			regulator-min-microvolt = <1704000>;
+			regulator-max-microvolt = <2928000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l11a_1p0: ldo11 {
+			regulator-min-microvolt = <1000000>;
+			regulator-max-microvolt = <1048000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vdd_qfprom:
+		vdd_qfprom_sp:
+		vdda_apc1_cs_1p8:
+		vdda_gfx_cs_1p8:
+		vdda_qrefs_1p8:
+		vdda_qusb_hs0_1p8:
+		vddpx_11:
+		vreg_l12a_1p8: ldo12 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vddpx_2:
+		vreg_l13a_2p95: ldo13 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <2960000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l14a_1p88: ldo14 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l15a_1p8: ldo15 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l16a_2p7: ldo16 {
+			regulator-min-microvolt = <2704000>;
+			regulator-max-microvolt = <2704000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l17a_1p3: ldo17 {
+			regulator-min-microvolt = <1304000>;
+			regulator-max-microvolt = <1304000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l18a_2p7: ldo18 {
+			regulator-min-microvolt = <2704000>;
+			regulator-max-microvolt = <2960000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l19a_3p0: ldo19 {
+			regulator-min-microvolt = <2856000>;
+			regulator-max-microvolt = <3104000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l20a_2p95: ldo20 {
+			regulator-min-microvolt = <2704000>;
+			regulator-max-microvolt = <2960000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l21a_2p95: ldo21 {
+			regulator-min-microvolt = <2704000>;
+			regulator-max-microvolt = <2960000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l22a_2p85: ldo22 {
+			regulator-min-microvolt = <2864000>;
+			regulator-max-microvolt = <3312000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l23a_3p3: ldo23 {
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3312000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vdda_qusb_hs0_3p1:
+		vreg_l24a_3p075: ldo24 {
+			regulator-min-microvolt = <3088000>;
+			regulator-max-microvolt = <3088000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l25a_3p3: ldo25 {
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3312000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vdda_hp_pcie_1p2:
+		vdda_hv_ebi0:
+		vdda_hv_ebi1:
+		vdda_hv_ebi2:
+		vdda_hv_ebi3:
+		vdda_mipi_csi_1p25:
+		vdda_mipi_dsi0_1p2:
+		vdda_mipi_dsi1_1p2:
+		vdda_pcie_1p2:
+		vdda_ufs1_1p2:
+		vdda_ufs2_1p2:
+		vdda_usb1_ss_1p2:
+		vdda_usb2_ss_1p2:
+		vreg_l26a_1p2: ldo26 {
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l28a_3p0: ldo28 {
+			regulator-min-microvolt = <2856000>;
+			regulator-max-microvolt = <3008000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_lvs1a_1p8: lvs1 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+		};
+
+		vreg_lvs2a_1p8: lvs2 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+		};
+	};
+
+	regulators-1 {
+		compatible = "qcom,pmi8998-rpmh-regulators";
+		qcom,pmic-id = "b";
+
+		vdd-bob-supply = <&vph_pwr>; // VDD_BOB
+
+		vreg_bob: bob {
+			regulator-min-microvolt = <3312000>;
+			regulator-max-microvolt = <3600000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_AUTO>;
+			regulator-allow-bypass;
+		};
+	};
+
+	regulators-2 {
+		compatible = "qcom,pm8005-rpmh-regulators";
+		qcom,pmic-id = "c";
+
+		vdd-s1-supply = <&vph_pwr>; // VDD_S1
+		vdd-s2-supply = <&vph_pwr>; // VDD_S2
+		vdd-s3-supply = <&vph_pwr>; // VDD_S3
+		vdd-s4-supply = <&vph_pwr>; // VDD_S4
+
+		vreg_s3c_0p6: smps3 {
+			regulator-min-microvolt = <600000>;
+			regulator-max-microvolt = <600000>;
+		};
+	};
+};
+
 &cdsp_pas {
 	status = "okay";
 	firmware-name = "qcom/sdm845/mi8/cdsp.mbn";
@@ -164,10 +468,10 @@
 
 &gcc {
 	protected-clocks = <GCC_QSPI_CORE_CLK>,
-			   <GCC_QSPI_CORE_CLK_SRC>,
-			   <GCC_QSPI_CNOC_PERIPH_AHB_CLK>,
-			   <GCC_LPASS_Q6_AXI_CLK>,
-			   <GCC_LPASS_SWAY_CLK>;
+				<GCC_QSPI_CORE_CLK_SRC>,
+				<GCC_QSPI_CNOC_PERIPH_AHB_CLK>,
+				<GCC_LPASS_Q6_AXI_CLK>,
+				<GCC_LPASS_SWAY_CLK>;
 };
 
 // REVIEW(Krey): Needed? Used by beryllium
@@ -224,6 +528,7 @@
 
 &mdss_dsi0_phy {
 	status = "okay";
+	// REVIEW(Krey->Caleb): This doesn't seem to match with what's in the schematics, maybe it means VREG_L1A_0P88 ?
 	vdds-supply = <&vreg_l1a_0p875>;
 };
 
@@ -297,9 +602,9 @@
 
 // REVIEW(Krey): Taken from beryllium, unsure if it's correct as equuleus support Quick Charge 4.0 where beryllium only Quick Charge 3.0
 &pmi8998_charger {
-	monitored-battery = <&battery>;
-
 	status = "okay";
+
+	monitored-battery = <&battery>;
 };
 
 &pmi8998_fg {
@@ -459,18 +764,17 @@
 &uart6 {
 	status = "okay";
 
-	// REVIEW(Krey): Unsure..
-	// pinctrl-0 = <&qup_uart6_4pin>;
+	pinctrl-0 = <&qup_uart6_4pin>;
 
-	// bluetooth {
-	// 	compatible = "qcom,wcn3990-bt";
+	bluetooth {
+		compatible = "qcom,wcn3990-bt";
 
-	// 	vddio-supply = <&vreg_s4a_1p8>;
-	// 	vddxo-supply = <&vreg_l7a_1p8>;
-	// 	vddrf-supply = <&vreg_l17a_1p3>;
-	// 	vddch0-supply = <&vreg_l25a_3p3>;
-	// 	max-speed = <3200000>;
-	// };
+		vddio-supply = <&vreg_s4a_1p8>; // VDD18_IO
+		vddxo-supply = <&vreg_l7a_1p8>; // VDD18_XTAL & VDD18_VCO_CH1
+		vddrf-supply = <&vreg_l17a_1p3>; // Goes to multiple Radio Frequeny related pins
+		vddch0-supply = <&vreg_l25a_3p3>; // VDD33_WL_CH0 ?
+		max-speed = <3200000>;
+	};
 };
 
 &uart9 {
@@ -478,7 +782,6 @@
 	status = "okay";
 };
 
-// REVIEW(Krey): Taken from 5.12.8 port
 &ufs_mem_hc {
 	status = "okay";
 
@@ -623,30 +926,30 @@
 	status = "okay";
 };
 
-// REVIEW(Krey): Unsure..
-// &camss {
-// 	vdda-phy-supply = <&vreg_l1a_0p875>;
-// 	vdda-pll-supply = <&vreg_l26a_1p2>;
+// REVIEW(Krey): Used on beryllium which uses the same camera Sony IMX363
+&camss {
+	vdda-phy-supply = <&vreg_l1a_0p875>;
+	vdda-pll-supply = <&vreg_l26a_1p2>;
 
-// 	vdda-csi0-supply = <&vdda_mipi_csi0_0p9>;
-// 	vdda-csi1-supply = <&vdda_mipi_csi1_0p9>;
-// 	vdda-csi2-supply = <&vdda_mipi_csi2_0p9>;
+	vdda-csi0-supply = <&vdda_mipi_csi0_0p9>;
+	vdda-csi1-supply = <&vdda_mipi_csi1_0p9>;
+	vdda-csi2-supply = <&vdda_mipi_csi2_0p9>;
 
-// 	status = "okay";
+	status = "okay";
 
-// 	ports {
-// 		#address-cells = <1>;
-// 		#size-cells = <0>;
-// 		port@0 {
-// 			reg = <0>;
-// 			csiphy0_ep: endpoint {
-// 				clock-lanes = <7>;
-// 				data-lanes = <0 1 2 3>;
-// 				remote-endpoint = <&imx363_ep>;
-// 			};
-// 		};
-// 	};
-// };
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0>;
+			csiphy0_ep: endpoint {
+				clock-lanes = <7>;
+				data-lanes = <0 1 2 3>;
+				remote-endpoint = <&imx363_ep>;
+			};
+		};
+	};
+};
 
 // &cci_i2c0 {
 // 	camera@10 {
