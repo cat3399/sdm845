@@ -196,50 +196,65 @@
 
 		// TODO(Krey): OnePlus-common has this different and juding by schematics it's more accurate than these which feel like a sane defaults.. They likely invested more time into this so ask the devs for details
 
-		// REVIEW(Krey): Comparing this to oneplus the `vreg_s3a_1p35` exists in the schematics, but `vreg_s2a_1p125` does not.
-		vreg_s2a_1p125: smps2 {
-			regulator-min-microvolt = <1100000>;
-			regulator-max-microvolt = <1100000>;
-		};
+		// REVIEW(Krey): Comparing this to oneplus the `vreg_s3a_1p35` exists in the schematics, but `vreg_s2a_1p125` does not so commenting it out
+		// vreg_s2a_1p125: smps2 {
+		// 	regulator-min-microvolt = <1100000>;
+		// 	regulator-max-microvolt = <1100000>;
+		// };
 
-		vreg_s3a_1p35: smps3 {
+		// VREG_S1 -> VSENSE_S1A_P
+
+		// VREG_S2 -> VSENSE_S2A_P
+
+		vreg_s3a_1p35: smps3 { // VREG_S3A_1P35
 			regulator-min-microvolt = <1352000>;
 			regulator-max-microvolt = <1352000>;
 		};
 
-		vreg_s5a_2p04: smps5 {
+		// REVIEW(Krey): According to QM75001 datasheet (https://www.datasheets360.com/pdf/-5786772158464047528) it takes minimum +0.8 and max +4.6 with typ +3.4 (Volts)
+		// REVIEW(Krey): Expects max 4.6, but using 4.2 as a sane buffer?
+		vreg_s4a_ip8: smps4 { // VREG_S4A_1P8
+			regulator-min-microvolt = <800000>; // 0.8 V
+			regulator-max-microvolt = <4200000>; // 4.2 V
+		}
+
+		vreg_s5a_2p04: smps5 { // VREG_S5A_2P04
 			regulator-min-microvolt = <1904000>;
 			regulator-max-microvolt = <2040000>;
 		};
+
+		// VRAG_S6 -> VSENSE_S6A_P
 
 		vreg_s7a_1p025: smps7 {
 			regulator-min-microvolt = <900000>;
 			regulator-max-microvolt = <1028000>;
 		};
 
-		// REVIEW(Krey): What to do with these? Should they be assigned or why is it declared this way?
-		vdd_qusb_hs0: // Goes to VREG_L1A_0P88
-		vdda_hp_pcie_core: // Goes to VREG_L1A_0P88
-		vdda_mipi_csi0_0p9: // Goes to VREG_L1A_0P88
-		vdda_mipi_csi1_0p9:
-		vdda_mipi_csi2_0p9:
-		vdda_mipi_dsi0_pll:
-		vdda_mipi_dsi1_pll:
+		// TODO(Krey): Check all min and max volts
+
 		vdda_qlink_lv:
 		vdda_qlink_lv_ck:
 		vdda_qrefs_0p875:
+		vdd_qusb_hs0:
+		vdda_mipi_dsi0_pll:
+		vdda_mipi_dsi1_pll:
+		vdda_mipi_csi0_0p9:
+		vdda_mipi_csi1_0p9:
+		vdda_mipi_csi2_0p9:
+		vdd_mipi_dsi0_1p2:
 		vdda_pcie_core:
-		vdda_pll_cc_ebi01:
-		vdda_pll_cc_ebi23:
-		vdda_sp_sensor:
 		vdda_ufs1_core:
+		vdda_hp_pcie_core:
+		vdda_pll_cc_ebi01:
+		vdda_pll_cc_ebi02:
+		vdda_sp_sensor:
 		vdda_ufs2_core:
-		vdda_usb1_ss_core:
 		vdda_usb2_ss_core:
-		vreg_l1a_0p875: ldo1 {
-			regulator-min-microvolt = <880000>;
-			regulator-max-microvolt = <880000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		vdda_usb1_ss_core:
+		vreg_l1a_0p88: ldo1 { // VREG_L1A_0P88
+			regulator-min-microvolt = <???>;
+			regulator-max-microvolt = <???>;
+			regulator-initial-mode = <???>;
 		};
 
 		vddpx_10:
@@ -250,15 +265,34 @@
 			regulator-always-on;
 		};
 
+		// REVIEW(Krey): The `VREG_L3A_1P0` and `VREG_L8A_1P2` are connected, but separated by a resistor R222 -> Is this ok to write it this way? E.g. Oneplus common doesn't include this regulator maybe bcs it goes in the RF transceiver?
+
+		vdd_1p0_xo:
+		vdd_1p0_gnss:
+		vdd_1p0_rx0:
+		vdd_1p0_rx1:
+		vdd_1p0_rx2:
+		vdd_1p0_rx:
 		vreg_l3a_1p0: ldo3 {
 			regulator-min-microvolt = <1000000>;
 			regulator-max-microvolt = <1000000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
-		vdd_wcss_cx:
-		vdd_wcss_mx:
+		// vdd_ssc_mx_1:
+		// vdd_ssc_mx_2:
+		// vdd_ssc_mx_3:
+		// vreg_l4a_op8: ldo4 {
+		// 	regulator-min-microvolt = <???>;
+		// 	regulator-max-microvolt = <???>;
+		// 	regulator-initial-mode = <???>;
+		// }
+
+		vdd_wcss_cx_1:
 		vdda_wcss_pll:
+		vdd_wcss_cx_2:
+		vdd_wcss_mx_1:
+		vdd_wcss_mx_2:
 		vreg_l5a_0p8: ldo5 {
 			regulator-min-microvolt = <800000>;
 			regulator-max-microvolt = <800000>;
@@ -272,41 +306,62 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		vdd18_xtal:
+		vdd18_vc0_ch1:
 		vreg_l7a_1p8: ldo7 {
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		vdd_1p2_ana:
+		vdd_1p2_ana1:
+		vdd_1p2_ana2:
+		vdd_1p2_ana3:
+		vdd_1p2_ana4:
+		vdd_1p2_rx0:
+		vdd_1p2_tx0:
+		vdd_1p2_rx1:
+		vdd_1p2:
 		vreg_l8a_1p2: ldo8 {
 			regulator-min-microvolt = <1200000>;
 			regulator-max-microvolt = <1248000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		// VDD(SIM_PMU_1)
+		vddpx_5:
 		vreg_l9a_1p8: ldo9 {
 			regulator-min-microvolt = <1704000>;
 			regulator-max-microvolt = <2928000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		// VDD(SIM_PMU_2)
+		vddpx_6:
 		vreg_l10a_1p8: ldo10 {
 			regulator-min-microvolt = <1704000>;
 			regulator-max-microvolt = <2928000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		vdd_1p0_dig1:
+		vdd_1p0_dig2:
 		vreg_l11a_1p0: ldo11 {
 			regulator-min-microvolt = <1000000>;
 			regulator-max-microvolt = <1048000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		// REVIEW(Krey): Connected to ldo1 and ldo20 are connected together, but separated by R814, unsure how to handle for `VDDA_MIPI_DSI0_0P9` and `VDDA_MIPI_DSI1_0P9`
+
+		// VREG_BB_CLK
+		// SHDN_N
+		vdda_qrefs_1p8:
 		vdd_qfprom:
 		vdd_qfprom_sp:
 		vdda_apc1_cs_1p8:
 		vdda_gfx_cs_1p8:
-		vdda_qrefs_1p8:
 		vdda_qusb_hs0_1p8:
 		vddpx_11:
 		vreg_l12a_1p8: ldo12 {
@@ -328,29 +383,59 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		vdd_1p8_tx0:
+		vdd_1p8_ana0:
+		vdd_1p8_tx1:
+		vdd_1p8_ana1:
+		vdd_1p8_fbrx:
 		vreg_l15a_1p8: ldo15 {
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		// Just goes to bunch of VDDs
 		vreg_l16a_2p7: ldo16 {
 			regulator-min-microvolt = <2704000>;
 			regulator-max-microvolt = <2704000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		/* WCN3990 Pins:
+		 * 27 - VDD13_WL_CH0
+		 * 84 - VDD13_WL_CH1
+		 * 33 - VDD13_WL_SYNTH_CH0
+		 * 90 - VDD13_WL_SYNTH_CH1
+		 * 12 - VDD13_BT_SYNTH
+		 * 66 - VDD13_PM
+		 *  8 - VDD13_FM
+		 * 11 - VDD13_BT_BB
+		 * 18 - VDD13_BT_FM_BBPLL 
+		 */
+		vdd13_wl_ch0:
+		vdd13_wl_ch1:
+		vdd13_wl_synth_ch0:
+		vdd13_wl_synth_ch1:
+		vdd13_bt_synth:
+		vdd13_pm:
+		vdd13_fm:
+		vdd13_bt_bb:
+		vdd13_bt_bb:
+		vdd13_bt_fm_bbpll:
+		vdd_wcss_adcdac_1:
+		vdd_wcss_adcdac_2:
 		vreg_l17a_1p3: ldo17 {
 			regulator-min-microvolt = <1304000>;
 			regulator-max-microvolt = <1304000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
-		vreg_l18a_2p7: ldo18 {
-			regulator-min-microvolt = <2704000>;
-			regulator-max-microvolt = <2960000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
-		};
+		// Not Connected in PM845
+		// vreg_l18a_2p7: ldo18 {
+		// 	regulator-min-microvolt = <2704000>;
+		// 	regulator-max-microvolt = <2960000>;
+		// 	regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		// };
 
 		vreg_l19a_3p0: ldo19 {
 			regulator-min-microvolt = <2856000>;
@@ -358,24 +443,33 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+
 		vreg_l20a_2p95: ldo20 {
 			regulator-min-microvolt = <2704000>;
 			regulator-max-microvolt = <2960000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		// vreg_bob
 		vreg_l21a_2p95: ldo21 {
 			regulator-min-microvolt = <2704000>;
 			regulator-max-microvolt = <2960000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		// VIN for NCP160AFCS180T2G
 		vreg_l22a_2p85: ldo22 {
 			regulator-min-microvolt = <2864000>;
 			regulator-max-microvolt = <3312000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		/* WCN3990 Pins:
+		 * 86 - VDD33_WL_CH1
+		 * 92 - VDD33_WL_DRV_CH1
+		 */
+		vdd33_wl_ch1:
+		vdd33_wl_drv_ch1:
 		vreg_l23a_3p3: ldo23 {
 			regulator-min-microvolt = <3000000>;
 			regulator-max-microvolt = <3312000>;
@@ -389,42 +483,68 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
+		/* WCN3990 Pins:
+		 * 29 - VDD33_WL_CH0
+		 * 35 - VDD33_WL_5G_DRV_CH0
+		 *  6 - VDD33_WL_BT_DRV_CH0
+		 *  9 - VDD33_BT_PA_CH2
+		 * 23 - VDD33_FEM
+		 * 30 - VDD33_PM_DLDO
+		 */
+		vdd33_wl_ch0:
+		vdd33_wl_5g_drv_ch0:
+		vdd33_wl_bt_drv_ch0:
+		vdd33_bt_pa_ch2:
+		vdd33_fem:
+		vdd33_pm_dldo:
 		vreg_l25a_3p3: ldo25 {
 			regulator-min-microvolt = <3300000>;
 			regulator-max-microvolt = <3312000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
-		vdda_hp_pcie_1p2:
 		vdda_hv_ebi0:
 		vdda_hv_ebi1:
 		vdda_hv_ebi2:
 		vdda_hv_ebi3:
-		vdda_mipi_csi_1p25:
-		vdda_mipi_dsi0_1p2:
-		vdda_mipi_dsi1_1p2:
 		vdda_pcie_1p2:
 		vdda_ufs1_1p2:
+		vdda_hp_pcie_1p2:
 		vdda_ufs2_1p2:
 		vdda_usb1_ss_1p2:
 		vdda_usb2_ss_1p2:
+		vdda_mipi_csi_1p25:
+		vdda_mipi_dsi0_1p2:
+		vdda_mipi_dsi1_1p2:
 		vreg_l26a_1p2: ldo26 {
 			regulator-min-microvolt = <1200000>;
 			regulator-max-microvolt = <1200000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
-		vreg_l28a_3p0: ldo28 {
-			regulator-min-microvolt = <2856000>;
-			regulator-max-microvolt = <3008000>;
-			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		vdd_ssc_cx_1:
+		vdd_ssc_cx_2:
+		vdd_ssc_cx_3:
+		vreg_l27a_0p75: ldo27 {
+			regulator-min-microvolt = <???>;
+			regulator-max-microvolt = <???>;
+			regulator-initial-mode = <???>;
+		}
+
+		vreg_l28a_3p3: ldo28 {
+			regulator-min-microvolt = <???>;
+			regulator-max-microvolt = <???>;
+			regulator-initial-mode = <???>;
 		};
 
-		vreg_lvs1a_1p8: lvs1 {
-			regulator-min-microvolt = <1800000>;
-			regulator-max-microvolt = <1800000>;
-		};
+		// Not found in schematics
+		// vreg_lvs1a_1p8: lvs1 {
+		// 	regulator-min-microvolt = <1800000>;
+		// 	regulator-max-microvolt = <1800000>;
+		// };
 
+		// AP_CS
+		// AP_SCL / AP_SCLK
 		vreg_lvs2a_1p8: lvs2 {
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
@@ -454,6 +574,52 @@
 		vdd-s3-supply = <&vph_pwr>; // VDD_S3
 		vdd-s4-supply = <&vph_pwr>; // VDD_S4
 
+		vdd_modem_1:
+		vdd_modem_2:
+		vdd_modem_3:
+		vdd_modem_4:
+		vdd_modem_5:
+		vdd_modem_6:
+		vdd_modem_7:
+		vreg_s2c_0p75: smps2 {
+			regulator-min-microvolt = <???>;
+			regulator-max-microvolt = <???>;
+		}
+
+		// EBI0_CAL:
+		// EBI2_CAL:
+		// ZQ0_0
+		// ZQ0_3
+		// ZQ1_0
+		// ZQ1_3
+		// VDDIO_EBI0_1
+		// VDDIO_EBI0_2
+		// VDDIO_EBI0_3
+		// VDDIO_EBI0_4
+		// VDDIO_EBI1_1
+		// VDDIO_EBI1_2
+		// VDDIO_EBI1_3
+		// VDDIO_EBI1_4
+		// VDDIO_EBI2_1
+		// VDDIO_EBI2_2
+		// VDDIO_EBI2_3
+		// VDDIO_EBI2_4
+		// VDDIO_EBI3_1
+		// VDDIO_EBI3_2
+		// VDDIO_EBI3_3
+		// VDDIO_EBI3_4
+		// VDDIO_CK_EBI0
+		// VDDIO_CK_EBI1
+		// VDDIO_CK_EBI2
+		// VDDIO_CK_EBI3
+		// VDDQ_1
+		// VDDQ_2
+		// VDDQ_3
+		// VDDQ_4
+		// VDDQ_5
+		// VDDQ_6
+		// VDDQ_7
+		// VDDQ_8
 		vreg_s3c_0p6: smps3 {
 			regulator-min-microvolt = <600000>;
 			regulator-max-microvolt = <600000>;
