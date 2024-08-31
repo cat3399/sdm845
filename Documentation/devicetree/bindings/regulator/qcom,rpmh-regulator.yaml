@@ -48,6 +48,7 @@ description: |
       For PM8350, smps1 - smps12, ldo1 - ldo10
       For PM8350C, smps1 - smps10, ldo1 - ldo13, bob
       For PM8450, smps1 - smps6, ldo1 - ldo4
+      For PM845, smps1 - smps13, ldo1 - ldo28, lvs1 - lvs2
       For PM8550, smps1 - smps6, ldo1 - ldo17, bob1 - bob2
       For PM8998, smps1 - smps13, ldo1 - ldo28, lvs1 - lvs2
       For PMI8998, bob
@@ -75,6 +76,7 @@ properties:
       - qcom,pm8350-rpmh-regulators
       - qcom,pm8350c-rpmh-regulators
       - qcom,pm8450-rpmh-regulators
+      - qcom,pm845-rpmh-regulators
       - qcom,pm8550-rpmh-regulators
       - qcom,pm8550ve-rpmh-regulators
       - qcom,pm8550vs-rpmh-regulators
@@ -327,6 +329,29 @@ allOf:
       patternProperties:
         "^vdd-l[1-4]-supply$": true
         "^vdd-s[1-6]-supply$": true
+  - if:
+      properties:
+        compatible:
+          enum:
+            - qcom,pm845-rpmh-regulators
+    then:
+      properties:
+        vdd-l1-l27-supply: true
+        vdd-l2-l8-l17-supply: true
+        vdd-l3-l11-supply: true
+        vdd-l4-l5-supply: true
+        vdd-l6-supply: true
+        vdd-l7-l12-l14-l15-supply: true
+        vdd-l9-supply: true
+        vdd-l10-l23-l25-supply: true
+        vdd-l13-l19-l21-supply: true
+        vdd-l16-l28-supply: true
+        vdd-l18-l22-supply: true
+        vdd-l20-l24-supply: true
+        vdd-l26-supply: true
+        vin-lvs-1-2-supply: true
+      patternProperties:
+        "^vdd-s([1-9]|1[0-3])-supply$": true
 
   - if:
       properties:

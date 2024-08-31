@@ -1,16 +1,31 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * SDM845 Xiaomi Mi 8 Family Device Tree Include
+ * SDM845 Xiaomi Mi 8 (SDM845) Family Device Tree Include ("DTSI")
  *
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2024, Jacob Hrbek <kreyren@fsfe.org>
  *
- * Relevant Materials:
+ * Designed to provide defaults for the Xiaomi Mi8 Family _with SnapDragon Mobile 845 chip_, which includes:
+ * * xiaomi-dipper (Xiaomi Mi 8)
+ * * xiaomi-equuelus (Xiaomi Mi 8 Pro)
+ * * xiaomi-ursa (Xiaomi Mi 8 Explorer)
+ *
+ * Beware that xiaomi-sirius (Xiaomi Mi 8 SE) and xiaomi-patina (Xiaomi Mi 8 Lite) use different chips which this DTSI is not compatible with!
+ *
+ * Additionaly ursa is often sold as Xiaomi Mi 8 Pro with titanium black color outside of china to share the firmware with equuelus which might result in some incompatibilities and unforseen issues, thus the device should be treated as equuelus as long as it's using it's firmware. So far all reviewed phones has the same mainboard. There might be issues with ursa using the first revision of mainboard which is rare.
+ *
+ * References:
  *  1. FDT Dump From MUIU (Android): https://github.com/user-attachments/files/16667567/fdt_dump.txt
  *  2. Compatibility submitted in sdm845-mainline for kernel version 5.12.8: https://gitlab.com/sdm845-mainline/linux/-/commit/9a023cf2ea5fa4a22c1ad5039240f08a3c5432cf
  *  3. Firmware Breakdown: https://wiki.debian.org/InstallingDebianOn/SHIFT/SHIFT6mq#Firmware
  *  4. DTS in linux 4.9 from LineageOS: https://github.com/LineageOS/android_kernel_xiaomi_sdm845
-*   5. Dmesg dump from LineageOS 21: https://github.com/user-attachments/files/16684801/android.log
+ *   5. Dmesg dump from LineageOS 21: https://github.com/user-attachments/files/16684801/android.log
+ *   6. QM75001 datasheet: https://www.datasheets360.com/pdf/-5786772158464047528
+ *   7. PCB Schematics: https://secyukle.com/dosya/uploads/schematics/Xiaomi%2BMi8%2B%28dipper%29%2BSchematic.rar
+ *   8. NCP134AMX105TCG datasheet: https://www.onsemi.com/pdf/datasheet/ncp134-d.pdf
+ *   9. TCC-103 datasheet: https://thetriac.com/view/768609/TTC-103.html
+ *   10. BGSX212MA18 Datasheet: https://www.alldatasheet.com/datasheet-pdf/view/1029718/INFINEON/BGSX212MA18.html
+ *   11. BCM47755KUB1G Datasheet: https://www.alldatasheet.com/datasheet-pdf/view/1022771/BOARDCOM/BCM47755KUB1G.html
  */
 
 /dts-v1/;
@@ -54,6 +69,7 @@
 	qcom,msm-id = <321 0x20001>;
 
 	aliases {
+		// REVIEW(Krey): The DEBUG_UART_TX is GPIO 4 and DEBUG_UART_RX on GPIO 5, should these be adjusted?
 		serial0 = &uart9;
 		serial1 = &uart6;
 	};
@@ -117,10 +133,7 @@
 			no-map;
 		};
 
-		slpi_mem: slpi@96b00000 {
-			reg = <0 0x96b00000 0 0x1400000>;
-			no-map;
-		};
+		slpi_mem: slpi@96b00000 {		 pm845 is pm8998 from register map pov, only minor changes between them 
 
 		spss_mem: spss@97f00000 {
 			reg = <0 0x97f00000 0 0x100000>;
@@ -157,11 +170,12 @@
 	firmware-name = "qcom/sdm845/mi8/adsp.mbn";
 };
 
+// TODO(Krey): Check all min and max volts
 // FIXME-QA(Krey): This configuration seems to be shared with other devices and should probably be moved in DTSI
+// Refer to <linux/Documentation/devicetree/bindings/regulator/qcom,rpmh-regulator.yaml> for details
 &apps_rsc {
 	regulators-0 {
-		// REVIEW(Krey): In schematics this is labeled as PM845?
-		compatible = "qcom,pm8998-rpmh-regulators";
+		compatible = "qcom,pm845-rpmh-regulators";
 		qcom,pmic-id = "a";
 
 		vdd-s1-supply = <&vph_pwr>; // VDD_S1
@@ -194,43 +208,120 @@
 
 		vin-lvs-1-2-supply = <&vreg_s4a_1p8>; // VIN_LVS_1_2
 
-		// TODO(Krey): OnePlus-common has this different and juding by schematics it's more accurate than these which feel like a sane defaults.. They likely invested more time into this so ask the devs for details
+		vdd_ldo_xo_rf = <&vreg_s5a_2p04>; // VDD_LDO_XO_RF
 
-		// REVIEW(Krey): Comparing this to oneplus the `vreg_s3a_1p35` exists in the schematics, but `vreg_s2a_1p125` does not so commenting it out
-		// vreg_s2a_1p125: smps2 {
-		// 	regulator-min-microvolt = <1100000>;
-		// 	regulator-max-microvolt = <1100000>;
-		// };
-
-		// VREG_S1 -> VSENSE_S1A_P
-
-		// VREG_S2 -> VSENSE_S2A_P
-
-		vreg_s3a_1p35: smps3 { // VREG_S3A_1P35
-			regulator-min-microvolt = <1352000>;
-			regulator-max-microvolt = <1352000>;
-		};
-
-		// REVIEW(Krey): According to QM75001 datasheet (https://www.datasheets360.com/pdf/-5786772158464047528) it takes minimum +0.8 and max +4.6 with typ +3.4 (Volts)
-		// REVIEW(Krey): Expects max 4.6, but using 4.2 as a sane buffer?
-		vreg_s4a_ip8: smps4 { // VREG_S4A_1P8
-			regulator-min-microvolt = <800000>; // 0.8 V
-			regulator-max-microvolt = <4200000>; // 4.2 V
+		// REVIEW(Krey): Not set in other relevant SDM845 devices?
+		vdda_ebi0_1:
+		vdda_ebi0_2:
+		vdda_ebi1_1:
+		vdda_ebi2_1:
+		vdda_ebi2_2:
+		vdda_ebi3_1:
+		vdda_ebi3_2:
+		vdda_cc_ebi01:
+		vdda_cc_ebi23:
+		vsw_s1:
+		vreg_s1a_0p8: smps1 {
+			// C644, C645 and C1524 are rated for 6.3 V, according to Ref.8 the connected NCP134AMX105TCG and NCP134AMX100TCG regulators expects input voltage range of 0.8~5.5 V -> Min 0.8, Max 4.4 (80% of 5.5 for safety), anything beyond will increase the risk to blow the regulators and beyond 6.3 will blow the capacitors.
+			regulator-min-microvolt = <800000>;
+			regulator-max-microvolt = <4400000>;
 		}
 
-		vreg_s5a_2p04: smps5 { // VREG_S5A_2P04
-			regulator-min-microvolt = <1904000>;
-			regulator-max-microvolt = <2040000>;
+		// REVIEW(Krey): Not set in other relevant SDM845 devices?
+		vdd1_1:
+		vdd2_2:
+		vdd2_3:
+		vdd2_4:
+		vdd2_5:
+		vdd2_6:
+		vdd2_7:
+		vdd2_8:
+		vdd2_9:
+		vdd2_10:
+		vdd2_11:
+		vdd2_12:
+		vsw_s2:
+		vreg_s2a_1p1: smps2 {
+			// C810 and C811 are rated for 4V with 80% safety being 3.2 V
+			regulator-min-microvolt = <3200000>; // 3.2 V
+			regulator-max-microvolt = <3200000>; // 3.2 V
+		}
+
+		vreg_s3a_1p35: smps3 {
+			// C644 and C645 are rated for 6.3 V with 80% being 5.04 V
+			// REVIEW(Krey): This is kinda a big jump from 1.352 V to 5.0.4 V -> Is this a good idea? Or why are other devices set to 1.352 V here ? Apparenrly on beryllium this is not connected anywhere so i guess it makes sense
+			regulator-min-microvolt = <5200000>; // 5.2 V
+			regulator-max-microvolt = <5200000>; // 5.2 V
 		};
 
-		// VRAG_S6 -> VSENSE_S6A_P
+		vreg_s4a_1p8: smps4 {
+			/*
+			 * TCC-103 Thermistor - No Datasheet
+			 * LMSP2PQP-G91 - No Datasheet
+			 * Power amplifier QM78013 - No Datasheet
+			 * QM52015 - No Datasheet
+			 * QM75001 - Ref.6, Pin VIO, Min +1.65 Typ +1.8 Max +1.95 
+			 * BGSX212MA18 - Ref.10, Pin VIO, Min -0.5, Typ Not Know, Max + 3.6 
+			 * QET4100 - No Datasheet
+			 * SDR845-FC - No Datasheet
+			 * QLN1020 - No Datasheet
+			 * QLN1030 - No Datasheet
+			 * PN80TEV1/C1B023 - No Datasheet, requires NDA signature.. Thanks for nothing NXP
+			 * BCM47755KUB1G - Ref. 11 useless, No Datasheet
+			 * WCN3990 - Pin 94 (VDD18_IO), 1.8 V IO? - No Datasheet
+			 * BM20B-10DS-0.4V(51)
+			 * FSA644BUCX - Pin VCC
+			 * C809, C808, C807, C806, C805, C600, C859, C858, C857, C856, C855, C646, C892, C893, C894, C760, C749, C750, C751 rated at 6.3V
+			 * SMB1355
+			 * KLUDG4U1EA-B0C1 (Flash Chip)
+			 * TAS2557 - Pin DVDD, AVDD, IOVDD
+			 * WCD9340 - Pin VDD_SIDO
+			 * C753, C798, C700 rated at 10V
+			 * WCD9340 - Pin VDD_BUCK
+			 * MAX14689 - Pin VCC
+			 * WCD9340 - Pin VDD_TX, VDD_RX
+			 * TPS22915B - Pin VIN
+			 * CAF99-12136-1032 - Pin det_sw_VCC
+			 * 502426-1410 - Pin 1, 7
+			 * AK8789-L (Hall) - Pin VDD
+			 * TPS22915B (LDO) - Pin VIN
+			 * NCP134AMX150TCG (IR Camera or it's component) - Pin VIN
+			 *
+			 * Decided to go with fixed 1.8 V as that's what compoents that we have datasheet for are calling
+			 */
+			// Handles VDD_1P8_DISP, VDD_MSM_IO for PMI8998
+			regulator-min-microvolt = <1800000>; // 1.8 V
+			regulator-max-microvolt = <1800000>; // 1.8 V
+		}
+
+		vreg_s5a_2p04: smps5 {
+			// C647 and C648 are rated for 6.3 V -> 5.04 V (80% of 6.3)
+			regulator-min-microvolt = <5040000>; // 5.04 V
+			regulator-max-microvolt = <5040000>; // 5.04 V
+		};
+
+		// Goes to pins of SDM845-F-914BMPSP-AA that we don't have datasheet for -> Keep commented out until we get reliable values
+		// // VDDA_MIPI_DSI0_0P9
+		// adda_apc_ppl:
+		// vdda_lpa_ppl:
+		// vddmx_8:
+		// vreg_s6a_0p: smps6 {
+		// 	// C853 is rated for 6.3 V
+		// 	regulator-min-microvolt = <???>; // ??? V
+		// 	regulator-max-microvolt = <???>; // ??? V
+		// }
 
 		vreg_s7a_1p025: smps7 {
+			// C640 and C639 are rated for 6.3 V, feeds power back to itself (pm845), lacks datasheet -> Re-use values from oneplus6 DTS
 			regulator-min-microvolt = <900000>;
 			regulator-max-microvolt = <1028000>;
 		};
 
-		// TODO(Krey): Check all min and max volts
+		// REVIEW(Krey): Not sure how to handle this
+		// VDD_GFX_5
+		// vreg_s1c_s4c_op75: ... {
+		// ...
+		// }
 
 		vdda_qlink_lv:
 		vdda_qlink_lv_ck:
@@ -252,18 +343,24 @@
 		vdda_usb2_ss_core:
 		vdda_usb1_ss_core:
 		vreg_l1a_0p88: ldo1 { // VREG_L1A_0P88
-			regulator-min-microvolt = <???>;
-			regulator-max-microvolt = <???>;
-			regulator-initial-mode = <???>;
+			// REVIEW(Krey): Sane? beryllium uses vreg_l1a_0p875
+			// Feeds power to itself as SDM845-F-914BMPSP-AA, No datasheet -> Re-use values from xiaomi-beryllium
+			regulator-min-microvolt = <880000>;
+			regulator-max-microvolt = <880000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vddpx_10:
 		vreg_l2a_1p2: ldo2 {
+			// REVIEW(Krey): Sane?
+			// Feeds power to itself as SDM845-F-914BMPSP-AA, No datasheet -> Re-use values from oneplus6
 			regulator-min-microvolt = <1200000>;
 			regulator-max-microvolt = <1200000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-always-on;
 		};
+
+		### CONTINUE FROM HERE ###
 
 		// REVIEW(Krey): The `VREG_L3A_1P0` and `VREG_L8A_1P2` are connected, but separated by a resistor R222 -> Is this ok to write it this way? E.g. Oneplus common doesn't include this regulator maybe bcs it goes in the RF transceiver?
 
@@ -274,6 +371,7 @@
 		vdd_1p0_rx2:
 		vdd_1p0_rx:
 		vreg_l3a_1p0: ldo3 {
+			// No datasheet -> Re-use values from shift axolotl
 			regulator-min-microvolt = <1000000>;
 			regulator-max-microvolt = <1000000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
@@ -430,7 +528,7 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
-		// Not Connected in PM845
+		// According the Ref.7 it's not connected (NC) in PM845
 		// vreg_l18a_2p7: ldo18 {
 		// 	regulator-min-microvolt = <2704000>;
 		// 	regulator-max-microvolt = <2960000>;
