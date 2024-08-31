@@ -9,7 +9,7 @@
 
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 #include "sdm845.dtsi"
-#include "pm8998.dtsi"
+#include "pm845.dtsi"
 #include "pmi8998.dtsi"
 
 / {
@@ -107,7 +107,7 @@
 
 &apps_rsc {
 	regulators-0 {
-		compatible = "qcom,pm8998-rpmh-regulators";
+		compatible = "qcom,pm845-rpmh-regulators";
 		qcom,pmic-id = "a";
 
 		vdd-s1-supply = <&vph_pwr>;

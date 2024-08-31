@@ -44,7 +44,8 @@
 #include "sdm845-wcd9340.dtsi"
 
 // REVIEW(Krey): In Ref. 5 on Line 311~313 it outputs these used
-#include "pm8998.dtsi" // PMIC@SID0: PM8998 v2.0 options: 0, 0, 0, 0↵
+// #include "pm8998.dtsi" // PMIC@SID0: PM8998 v2.0 options: 0, 0, 0, 0↵
+#include "pm845.dtsi"
 #include "pm8005.dtsi" // PMIC@SID4: PM8005 v2.0 options: 0, 0, 0, 0↵
 #include "pmi8998.dtsi" // PMIC@SID2: PMI8998 v2.1 options: 0, 0, 0, 0↵
 
@@ -81,7 +82,7 @@
 	/* Reserved memory changes from downstream */
 	reserved-memory {
 		/*
-		 * From Dump of /sys/firmware/fdt on URSA (Equuleus) in Android:
+		 * From Dump of /sys/firmware/fdt on URSA (Equuleus) from TWRP:
 		 * - hyp_region@85700000
 		 * - xbl_region@85e00000
 		 * - removed_region@85fc0000
@@ -133,7 +134,10 @@
 			no-map;
 		};
 
-		slpi_mem: slpi@96b00000 {		 pm845 is pm8998 from register map pov, only minor changes between them 
+		slpi_mem: slpi@96b00000 {
+			reg = <0 0x96b00000 0 0x1400000>;
+			no-map;
+		};
 
 		spss_mem: spss@97f00000 {
 			reg = <0 0x97f00000 0 0x100000>;
@@ -162,6 +166,43 @@
 			no-map;
 			reg = <0 0x88f00000 0 0x200000>;
 		};
+
+		// ramoops: ramoops@b0000000 {
+		// 	compatible = "ramoops";
+		// 	// REVIEW(Krey): The '0x400000' is wrong, i don't know how to figure it out
+		// 	reg = <0 b0000000 0 0x400000>;
+		// 	record-size = <0x40000>;
+		// 	console-size = <0x40000>;
+		// 	ftrace-size = <0x40000>;
+		// 	// REVIEW(Krey): 0x200000 also likely wrong
+		// 	pmsg-size = <0x200000>;
+		// 	ecc-size = <16>;
+		// };
+	};
+
+	vph_pwr: vph-pwr-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "vph_pwr";
+		regulator-min-microvolt = <3700000>;
+		regulator-max-microvolt = <3700000>;
+	};
+
+	// Taken from other devices it still seem to be required
+	/*
+	* Apparently RPMh does not provide support for PM8998 S4 because it
+	* is always-on; model it as a fixed regulator.
+	*/
+	vreg_s4a_1p8: smps4 {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_s4a_1p8";
+
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+
+		regulator-always-on;
+		regulator-boot-on;
+
+		vin-supply = <&vph_pwr>;
 	};
 };
 
@@ -171,11 +212,30 @@
 };
 
 // TODO(Krey): Check all min and max volts
-// FIXME-QA(Krey): This configuration seems to be shared with other devices and should probably be moved in DTSI
+
+/* 
+ * FIXME-QA(Krey): It seems messy to having to find the voltage minima and maxima and then having to calculate it to use 80% of maxima for safety.. It should probably do that by default with additional option to adjust the safety marging e.g.:
+ * vreg_s1a_0p8: smps1 {
+ *   // C644, C645 and C1524 are rated for 6.3 V
+ *   // According to Ref.8 the connected NCP134AMX105TCG and NCP134AMX100TCG regulators expects input voltage range of 0.8~5.5 V -> Min 0.8, Max 4.4 (80% of 5.5 for safety)
+ *
+ *   // Anything beyond will increase the risk to blow the regulators and beyond 6.3 will exponentially accelerate the wear on the capacitors
+ *   regulator-min-microvolt = <800000>; // 0.8 V
+ *   regulator-max-microvolt = <5500000>; // 5.5 V
+ *   // Proposed optional:
+ *   regulator-max-safety-margin = <80>; // 80% of regulator-max-microvolt
+ * }
+ *
+ * Which would also make it more clear to track for changes in safety margin
+ */
+
+// FIXME-QA(Krey): Some of this configuration seems to be shared with other devices and should probably be moved in DTSI
 // Refer to <linux/Documentation/devicetree/bindings/regulator/qcom,rpmh-regulator.yaml> for details
 &apps_rsc {
 	regulators-0 {
 		compatible = "qcom,pm845-rpmh-regulators";
+		
+		// REVIEW(Krey): Unsure about this one
 		qcom,pmic-id = "a";
 
 		vdd-s1-supply = <&vph_pwr>; // VDD_S1
@@ -210,7 +270,6 @@
 
 		vdd_ldo_xo_rf = <&vreg_s5a_2p04>; // VDD_LDO_XO_RF
 
-		// REVIEW(Krey): Not set in other relevant SDM845 devices?
 		vdda_ebi0_1:
 		vdda_ebi0_2:
 		vdda_ebi1_1:
@@ -222,12 +281,16 @@
 		vdda_cc_ebi23:
 		vsw_s1:
 		vreg_s1a_0p8: smps1 {
-			// C644, C645 and C1524 are rated for 6.3 V, according to Ref.8 the connected NCP134AMX105TCG and NCP134AMX100TCG regulators expects input voltage range of 0.8~5.5 V -> Min 0.8, Max 4.4 (80% of 5.5 for safety), anything beyond will increase the risk to blow the regulators and beyond 6.3 will blow the capacitors.
-			regulator-min-microvolt = <800000>;
-			regulator-max-microvolt = <4400000>;
-		}
+			/*
+			 * C644, C645 and C1524 are rated for 6.3 V
+			 * According to Ref.8 the connected NCP134AMX105TCG and NCP134AMX100TCG regulators expects input voltage range of 0.8~5.5 V -> Min 0.8, Max 4.4 (80% of 5.5 for safety)
 
-		// REVIEW(Krey): Not set in other relevant SDM845 devices?
+			 * Anything beyond will increase the risk to blow the regulators and beyond 6.3 will exponentially accelerate the wear on the capacitors
+			 */
+			regulator-min-microvolt = <800000>; // 0.8 V
+			regulator-max-microvolt = <4400000>; // 4.4V (80% of 5.5V)
+		}
+	
 		vdd1_1:
 		vdd2_2:
 		vdd2_3:
@@ -243,64 +306,77 @@
 		vsw_s2:
 		vreg_s2a_1p1: smps2 {
 			// C810 and C811 are rated for 4V with 80% safety being 3.2 V
-			regulator-min-microvolt = <3200000>; // 3.2 V
-			regulator-max-microvolt = <3200000>; // 3.2 V
+			// REVIEW(Krey): Ref.2 uses vreg_s2a_1p125, which is not found in schematics and uses 1.1V ? -> I guess the previous contributor didn't have access to schematics and re-used values from other devices or has access to more references then me to figure out the 1.1? -> Using 1.1 for safety for now
+			// regulator-min-microvolt = <3200000>; // 3.2 V
+			// regulator-max-microvolt = <3200000>; // 3.2 V
+			regulator-min-microvolt = <1100000>; // 1.1 V
+			regulator-max-microvolt = <1100000>; // 1.1 V
 		}
 
 		vreg_s3a_1p35: smps3 {
 			// C644 and C645 are rated for 6.3 V with 80% being 5.04 V
 			// REVIEW(Krey): This is kinda a big jump from 1.352 V to 5.0.4 V -> Is this a good idea? Or why are other devices set to 1.352 V here ? Apparenrly on beryllium this is not connected anywhere so i guess it makes sense
-			regulator-min-microvolt = <5200000>; // 5.2 V
-			regulator-max-microvolt = <5200000>; // 5.2 V
+			// regulator-min-microvolt = <5200000>; // 5.2 V
+			// regulator-max-microvolt = <5200000>; // 5.2 V
+
+			// REVIEW(Krey): Also Ref.2 is using 1.352 V, reusing that for safety
+			regulator-min-microvolt = <1352000>; // 1.352 V
+			regulator-max-microvolt = <1352000>; // 1.352 V
 		};
 
-		vreg_s4a_1p8: smps4 {
-			/*
-			 * TCC-103 Thermistor - No Datasheet
-			 * LMSP2PQP-G91 - No Datasheet
-			 * Power amplifier QM78013 - No Datasheet
-			 * QM52015 - No Datasheet
-			 * QM75001 - Ref.6, Pin VIO, Min +1.65 Typ +1.8 Max +1.95 
-			 * BGSX212MA18 - Ref.10, Pin VIO, Min -0.5, Typ Not Know, Max + 3.6 
-			 * QET4100 - No Datasheet
-			 * SDR845-FC - No Datasheet
-			 * QLN1020 - No Datasheet
-			 * QLN1030 - No Datasheet
-			 * PN80TEV1/C1B023 - No Datasheet, requires NDA signature.. Thanks for nothing NXP
-			 * BCM47755KUB1G - Ref. 11 useless, No Datasheet
-			 * WCN3990 - Pin 94 (VDD18_IO), 1.8 V IO? - No Datasheet
-			 * BM20B-10DS-0.4V(51)
-			 * FSA644BUCX - Pin VCC
-			 * C809, C808, C807, C806, C805, C600, C859, C858, C857, C856, C855, C646, C892, C893, C894, C760, C749, C750, C751 rated at 6.3V
-			 * SMB1355
-			 * KLUDG4U1EA-B0C1 (Flash Chip)
-			 * TAS2557 - Pin DVDD, AVDD, IOVDD
-			 * WCD9340 - Pin VDD_SIDO
-			 * C753, C798, C700 rated at 10V
-			 * WCD9340 - Pin VDD_BUCK
-			 * MAX14689 - Pin VCC
-			 * WCD9340 - Pin VDD_TX, VDD_RX
-			 * TPS22915B - Pin VIN
-			 * CAF99-12136-1032 - Pin det_sw_VCC
-			 * 502426-1410 - Pin 1, 7
-			 * AK8789-L (Hall) - Pin VDD
-			 * TPS22915B (LDO) - Pin VIN
-			 * NCP134AMX150TCG (IR Camera or it's component) - Pin VIN
-			 *
-			 * Decided to go with fixed 1.8 V as that's what compoents that we have datasheet for are calling
-			 */
-			// Handles VDD_1P8_DISP, VDD_MSM_IO for PMI8998
-			regulator-min-microvolt = <1800000>; // 1.8 V
-			regulator-max-microvolt = <1800000>; // 1.8 V
-		}
+		// Refer to the note above about this, pending management
+		// vreg_s4a_1p8: smps4 {
+		// 	/*
+		// 	 * TCC-103 Thermistor - No Datasheet
+		// 	 * LMSP2PQP-G91 - No Datasheet
+		// 	 * Power amplifier QM78013 - No Datasheet
+		// 	 * QM52015 - No Datasheet
+		// 	 * QM75001 - Ref.6, Pin VIO, Min +1.65 Typ +1.8 Max +1.95 
+		// 	 * BGSX212MA18 - Ref.10, Pin VIO, Min -0.5, Typ Not Know, Max + 3.6 
+		// 	 * QET4100 - No Datasheet
+		// 	 * SDR845-FC - No Datasheet
+		// 	 * QLN1020 - No Datasheet
+		// 	 * QLN1030 - No Datasheet
+		// 	 * PN80TEV1/C1B023 - No Datasheet, requires NDA signature.. Thanks for nothing NXP
+		// 	 * BCM47755KUB1G - Ref. 11 useless, No Datasheet
+		// 	 * WCN3990 - Pin 94 (VDD18_IO), 1.8 V IO? - No Datasheet
+		// 	 * BM20B-10DS-0.4V(51)
+		// 	 * FSA644BUCX - Pin VCC
+		// 	 * C809, C808, C807, C806, C805, C600, C859, C858, C857, C856, C855, C646, C892, C893, C894, C760, C749, C750, C751 rated at 6.3V
+		// 	 * SMB1355
+		// 	 * KLUDG4U1EA-B0C1 (Flash Chip)
+		// 	 * TAS2557 - Pin DVDD, AVDD, IOVDD
+		// 	 * WCD9340 - Pin VDD_SIDO
+		// 	 * C753, C798, C700 rated at 10V
+		// 	 * WCD9340 - Pin VDD_BUCK
+		// 	 * MAX14689 - Pin VCC
+		// 	 * WCD9340 - Pin VDD_TX, VDD_RX
+		// 	 * TPS22915B - Pin VIN
+		// 	 * CAF99-12136-1032 - Pin det_sw_VCC
+		// 	 * 502426-1410 - Pin 1, 7
+		// 	 * AK8789-L (Hall) - Pin VDD
+		// 	 * TPS22915B (LDO) - Pin VIN
+		// 	 * NCP134AMX150TCG (IR Camera or it's component) - Pin VIN
+		// 	 *
+		// 	 * Decided to go with fixed 1.8 V as that's what compoents that we have datasheet for are calling
+		// 	 */
+		// 	// Handles VDD_1P8_DISP, VDD_MSM_IO for PMI8998
+		// 	// REVIEW(Krey): Refer to Ref. 2 Line 138 which claims that we don't or didn't have support for it in 5.12.8?
+		// 	regulator-min-microvolt = <1800000>; // 1.8 V
+		// 	regulator-max-microvolt = <1800000>; // 1.8 V
+		// }
 
 		vreg_s5a_2p04: smps5 {
 			// C647 and C648 are rated for 6.3 V -> 5.04 V (80% of 6.3)
-			regulator-min-microvolt = <5040000>; // 5.04 V
-			regulator-max-microvolt = <5040000>; // 5.04 V
+			// regulator-min-microvolt = <5040000>; // 5.04 V
+			// regulator-max-microvolt = <5040000>; // 5.04 V
+			// REVIEW(Krey): Ref.2 uses these values unclear why, but re-using them for safety..
+			regulator-min-microvolt = <1904000>; // 1.904 V
+			regulator-max-microvolt = <2040000>; // 2.040 V 
+
 		};
 
-		// Goes to pins of SDM845-F-914BMPSP-AA that we don't have datasheet for -> Keep commented out until we get reliable values
+		// Goes to pins of SDM845-F-914BMPSP-AA that we don't have datasheet for or reference from other devices -> Keep commented out until we get reliable values
 		// // VDDA_MIPI_DSI0_0P9
 		// adda_apc_ppl:
 		// vdda_lpa_ppl:
@@ -312,15 +388,20 @@
 		// }
 
 		vreg_s7a_1p025: smps7 {
-			// C640 and C639 are rated for 6.3 V, feeds power back to itself (pm845), lacks datasheet -> Re-use values from oneplus6 DTS
-			regulator-min-microvolt = <900000>;
-			regulator-max-microvolt = <1028000>;
+			// C640 and C639 are rated for 6.3 V, feeds power back to itself (pm845), lacks datasheet -> Re-use values from oneplus6 DTS which is what Ref.2 is also doing
+			regulator-min-microvolt = <900000>; // 0.9 V
+			regulator-max-microvolt = <1028000>; // 1.028 V 
 		};
 
-		// REVIEW(Krey): Not sure how to handle this
-		// VDD_GFX_5
-		// vreg_s1c_s4c_op75: ... {
-		// ...
+		// vdd_gfx_5:
+		// vreg_s1c_s4c_0p75: smps8 {
+		// 	/*
+		// 	 * C816, C817, C817, C819 are rated for 4 V
+		// 	 * C895 is rated for 6.3 V
+		// 	 */
+		// 	// FIXME(Krey): No Datasheet to figure out sane values and unsure if 80% of 4V is good idea
+		// 	regulator-min-microvolt = <???>;
+		// 	regulator-max-microvolt = <???>;
 		// }
 
 		vdda_qlink_lv:
@@ -342,13 +423,15 @@
 		vdda_ufs2_core:
 		vdda_usb2_ss_core:
 		vdda_usb1_ss_core:
-		vreg_l1a_0p88: ldo1 { // VREG_L1A_0P88
-			// REVIEW(Krey): Sane? beryllium uses vreg_l1a_0p875
+		vreg_l1a_0p88: ldo1 {
+			// REVIEW(Krey): Sane? beryllium uses vreg_l1a_0p875 which is not found in the schematics either so it's probably re-using that from either axolotl or oneplus6
 			// Feeds power to itself as SDM845-F-914BMPSP-AA, No datasheet -> Re-use values from xiaomi-beryllium
-			regulator-min-microvolt = <880000>;
-			regulator-max-microvolt = <880000>;
+			regulator-min-microvolt = <880000>; // 0.88 V
+			regulator-max-microvolt = <880000>; // 0.88 V
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
+
+		### CONTINUE HERE ###
 
 		vddpx_10:
 		vreg_l2a_1p2: ldo2 {
@@ -359,8 +442,6 @@
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 			regulator-always-on;
 		};
-
-		### CONTINUE FROM HERE ###
 
 		// REVIEW(Krey): The `VREG_L3A_1P0` and `VREG_L8A_1P2` are connected, but separated by a resistor R222 -> Is this ok to write it this way? E.g. Oneplus common doesn't include this regulator maybe bcs it goes in the RF transceiver?
 
@@ -381,6 +462,7 @@
 		// vdd_ssc_mx_2:
 		// vdd_ssc_mx_3:
 		// vreg_l4a_op8: ldo4 {
+		//	// No Datasheet or other reference for this
 		// 	regulator-min-microvolt = <???>;
 		// 	regulator-max-microvolt = <???>;
 		// 	regulator-initial-mode = <???>;
@@ -392,6 +474,7 @@
 		vdd_wcss_mx_1:
 		vdd_wcss_mx_2:
 		vreg_l5a_0p8: ldo5 {
+			// No Datasheet, re-using from other devices
 			regulator-min-microvolt = <800000>;
 			regulator-max-microvolt = <800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
@@ -399,6 +482,7 @@
 
 		vddpx_13:
 		vreg_l6a_1p8: ldo6 {
+			// No Datasheet, re-using from other devices
 			regulator-min-microvolt = <1856000>;
 			regulator-max-microvolt = <1856000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
@@ -407,6 +491,7 @@
 		vdd18_xtal:
 		vdd18_vc0_ch1:
 		vreg_l7a_1p8: ldo7 {
+			// No Datasheet, re-using from other devices
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
@@ -422,6 +507,7 @@
 		vdd_1p2_rx1:
 		vdd_1p2:
 		vreg_l8a_1p2: ldo8 {
+			// No Datasheet, re-using from other devices
 			regulator-min-microvolt = <1200000>;
 			regulator-max-microvolt = <1248000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
@@ -430,6 +516,7 @@
 		// VDD(SIM_PMU_1)
 		vddpx_5:
 		vreg_l9a_1p8: ldo9 {
+			// No Datasheet, re-using from other devices
 			regulator-min-microvolt = <1704000>;
 			regulator-max-microvolt = <2928000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
@@ -438,6 +525,7 @@
 		// VDD(SIM_PMU_2)
 		vddpx_6:
 		vreg_l10a_1p8: ldo10 {
+			// No Datasheet, re-using from other devices
 			regulator-min-microvolt = <1704000>;
 			regulator-max-microvolt = <2928000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
@@ -446,6 +534,7 @@
 		vdd_1p0_dig1:
 		vdd_1p0_dig2:
 		vreg_l11a_1p0: ldo11 {
+			// No Datasheet, re-using from other devices
 			regulator-min-microvolt = <1000000>;
 			regulator-max-microvolt = <1048000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
@@ -463,6 +552,7 @@
 		vdda_qusb_hs0_1p8:
 		vddpx_11:
 		vreg_l12a_1p8: ldo12 {
+			// No Datasheet, re-using from other devices
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
@@ -470,12 +560,14 @@
 
 		vddpx_2:
 		vreg_l13a_2p95: ldo13 {
+			// No Datasheet, re-using from other devices
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <2960000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
 		vreg_l14a_1p88: ldo14 {
+			// No Datasheet, re-using from other devices
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
@@ -487,6 +579,7 @@
 		vdd_1p8_ana1:
 		vdd_1p8_fbrx:
 		vreg_l15a_1p8: ldo15 {
+			// No Datasheet, re-using from other devices
 			regulator-min-microvolt = <1800000>;
 			regulator-max-microvolt = <1800000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
@@ -494,6 +587,7 @@
 
 		// Just goes to bunch of VDDs
 		vreg_l16a_2p7: ldo16 {
+			// No Datasheet, re-using from other devices
 			regulator-min-microvolt = <2704000>;
 			regulator-max-microvolt = <2704000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
@@ -523,19 +617,22 @@
 		vdd_wcss_adcdac_1:
 		vdd_wcss_adcdac_2:
 		vreg_l17a_1p3: ldo17 {
+			// No Datasheet, re-using from other devices
 			regulator-min-microvolt = <1304000>;
 			regulator-max-microvolt = <1304000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
-		// According the Ref.7 it's not connected (NC) in PM845
+		// According the Ref.7 it's not connected (NC) in PM845, unsure how to handle
 		// vreg_l18a_2p7: ldo18 {
+		//  // No Datasheet, re-using from other devices
 		// 	regulator-min-microvolt = <2704000>;
 		// 	regulator-max-microvolt = <2960000>;
 		// 	regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		// };
 
 		vreg_l19a_3p0: ldo19 {
+			// No Datasheet, re-using from other devices
 			regulator-min-microvolt = <2856000>;
 			regulator-max-microvolt = <3104000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
@@ -543,13 +640,15 @@
 
 
 		vreg_l20a_2p95: ldo20 {
+			// No Datasheet, re-using from other devices
 			regulator-min-microvolt = <2704000>;
 			regulator-max-microvolt = <2960000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 
-		// vreg_bob
+		vreg_bob:
 		vreg_l21a_2p95: ldo21 {
+			// No Datasheet, re-using from other devices
 			regulator-min-microvolt = <2704000>;
 			regulator-max-microvolt = <2960000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
@@ -557,6 +656,7 @@
 
 		// VIN for NCP160AFCS180T2G
 		vreg_l22a_2p85: ldo22 {
+			// NCP160AFCS180T2G, Pin VIN
 			regulator-min-microvolt = <2864000>;
 			regulator-max-microvolt = <3312000>;
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;

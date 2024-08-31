@@ -138,7 +138,7 @@
 
 &apps_rsc {
 	regulators-0 {
-		compatible = "qcom,pm8998-rpmh-regulators";
+		compatible = "qcom,pm845-rpmh-regulators";
 		qcom,pmic-id = "a";
 
 		vdd-s1-supply = <&vph_pwr>;
