@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
+
 /*
  * SDM845 Xiaomi Mi 8 (SDM845) Family Device Tree Include ("DTSI")
  *
@@ -14,6 +15,9 @@
  *
  * Additionaly ursa is often sold as Xiaomi Mi 8 Pro with titanium black color outside of china to share the firmware with equuelus which might result in some incompatibilities and unforseen issues, thus the device should be treated as equuelus as long as it's using it's firmware. So far all reviewed phones has the same mainboard. There might be issues with ursa using the first revision of mainboard which is rare.
  *
+ * Teminology:
+ *  * SDM845 - SnapDragon Mobile 845
+ *
  * References:
  *  1. FDT Dump From MUIU (Android): https://github.com/user-attachments/files/16667567/fdt_dump.txt
  *  2. Compatibility submitted in sdm845-mainline for kernel version 5.12.8: https://gitlab.com/sdm845-mainline/linux/-/commit/9a023cf2ea5fa4a22c1ad5039240f08a3c5432cf
@@ -26,6 +30,9 @@
  *   9. TCC-103 datasheet: https://thetriac.com/view/768609/TTC-103.html
  *   10. BGSX212MA18 Datasheet: https://www.alldatasheet.com/datasheet-pdf/view/1029718/INFINEON/BGSX212MA18.html
  *   11. BCM47755KUB1G Datasheet: https://www.alldatasheet.com/datasheet-pdf/view/1022771/BOARDCOM/BCM47755KUB1G.html
+ *   12. PostMarketOS Wiki About the family of devices: https://wiki.postmarketos.org/wiki/Xiaomi_Mi_8_(SDM845)#Debug_UART
+ *     12.1. Details on the Debug UART: https://wiki.postmarketos.org/wiki/Xiaomi_Mi_8_(SDM845)#Debug_UART
+ *   13. NCP134AMX100TCG Datasheet: https://eu.mouser.com/datasheet/2/308/1/NCP134_D-2316982.pdf
  */
 
 /dts-v1/;
@@ -67,7 +74,7 @@
 / {
 	// REVIEW(Krey): The formfactor is 'slate', but the DTS doesn't differenciate it?
 	chassis-type = "handset";
-	qcom,msm-id = <321 0x20001>;
+	qcom,msm-id = <321 0x20001>; // Set the unique ID allocated to the family of boards
 
 	aliases {
 		// REVIEW(Krey): The DEBUG_UART_TX is GPIO 4 and DEBUG_UART_RX on GPIO 5, should these be adjusted?
@@ -76,13 +83,14 @@
 	};
 
 	chosen {
+		// More informations about the Debug UART can be found in Ref. 12.1
 		stdout-path = "serial0:115200n8";
 	};
 
 	/* Reserved memory changes from downstream */
 	reserved-memory {
 		/*
-		 * From Dump of /sys/firmware/fdt on URSA (Equuleus) from TWRP:
+		 * From Dump of /sys/firmware/fdt on EQUULEUS (Reflashed URSA) from TWRP with MIUI on the device:
 		 * - hyp_region@85700000
 		 * - xbl_region@85e00000
 		 * - removed_region@85fc0000
@@ -176,6 +184,7 @@
 		// 	ftrace-size = <0x40000>;
 		// 	// REVIEW(Krey): 0x200000 also likely wrong
 		// 	pmsg-size = <0x200000>;
+		// // REVIEW(Krey): No idea how to determine the `16` here
 		// 	ecc-size = <16>;
 		// };
 	};
@@ -186,56 +195,28 @@
 		regulator-min-microvolt = <3700000>;
 		regulator-max-microvolt = <3700000>;
 	};
-
-	// Taken from other devices it still seem to be required
-	/*
-	* Apparently RPMh does not provide support for PM8998 S4 because it
-	* is always-on; model it as a fixed regulator.
-	*/
-	vreg_s4a_1p8: smps4 {
-		compatible = "regulator-fixed";
-		regulator-name = "vreg_s4a_1p8";
-
-		regulator-min-microvolt = <1800000>;
-		regulator-max-microvolt = <1800000>;
-
-		regulator-always-on;
-		regulator-boot-on;
-
-		vin-supply = <&vph_pwr>;
-	};
 };
 
+// Audio Stream DMA Processor ("ADSP") designed to handle Direct Memory Access (DMA) operations for audio streams in SDM845
 &adsp_pas {
 	status = "okay";
+
+	// Requires a blob to function
 	firmware-name = "qcom/sdm845/mi8/adsp.mbn";
 };
 
 // TODO(Krey): Check all min and max volts
 
-/* 
- * FIXME-QA(Krey): It seems messy to having to find the voltage minima and maxima and then having to calculate it to use 80% of maxima for safety.. It should probably do that by default with additional option to adjust the safety marging e.g.:
- * vreg_s1a_0p8: smps1 {
- *   // C644, C645 and C1524 are rated for 6.3 V
- *   // According to Ref.8 the connected NCP134AMX105TCG and NCP134AMX100TCG regulators expects input voltage range of 0.8~5.5 V -> Min 0.8, Max 4.4 (80% of 5.5 for safety)
+/*
+ * Regulator declaration
  *
- *   // Anything beyond will increase the risk to blow the regulators and beyond 6.3 will exponentially accelerate the wear on the capacitors
- *   regulator-min-microvolt = <800000>; // 0.8 V
- *   regulator-max-microvolt = <5500000>; // 5.5 V
- *   // Proposed optional:
- *   regulator-max-safety-margin = <80>; // 80% of regulator-max-microvolt
- * }
+ * Requires access to schematics (Ref. 7) and relevant datasheets to figure out how the regulator is wired and at what minima and maxima it's expected to operate.
  *
- * Which would also make it more clear to track for changes in safety margin
+ * Refer to <linux/Documentation/devicetree/bindings/regulator/qcom,rpmh-regulator.yaml> for details
  */
-
-// FIXME-QA(Krey): Some of this configuration seems to be shared with other devices and should probably be moved in DTSI
-// Refer to <linux/Documentation/devicetree/bindings/regulator/qcom,rpmh-regulator.yaml> for details
 &apps_rsc {
-	regulators-0 {
-		compatible = "qcom,pm845-rpmh-regulators";
-		
-		// REVIEW(Krey): Unsure about this one
+	regulators-0 { // PM845
+		compatible = "qcom,pm845-rpmh-regulators"; // Nearly identical to PM8998 (PMIC)
 		qcom,pmic-id = "a";
 
 		vdd-s1-supply = <&vph_pwr>; // VDD_S1
@@ -282,13 +263,14 @@
 		vsw_s1:
 		vreg_s1a_0p8: smps1 {
 			/*
-			 * C644, C645 and C1524 are rated for 6.3 V
-			 * According to Ref.8 the connected NCP134AMX105TCG and NCP134AMX100TCG regulators expects input voltage range of 0.8~5.5 V -> Min 0.8, Max 4.4 (80% of 5.5 for safety)
-
-			 * Anything beyond will increase the risk to blow the regulators and beyond 6.3 will exponentially accelerate the wear on the capacitors
+			 * Power for the PM845 regulator?
+			 *
+			 * C644, C645, C1524 rated 6.3V
+			 * NCP134AMX105TCG (VIN pin) - Max −0.3 ~ 6 V, rated 0.8 ~ 5.5 V [Ref.8]
+			 * NCP134AMX100TCG (VIN pin) - Max −0.3 ~ 6 V, rated 0.8 ~ 5.5 V [Ref. 13]
 			 */
-			regulator-min-microvolt = <800000>; // 0.8 V
-			regulator-max-microvolt = <4400000>; // 4.4V (80% of 5.5V)
+			regulator-min-microvolt = <800000>; // 0.8V = 800 000 microvolts
+			regulator-max-microvolt = <5500000>; // 5.5V = 5 500 000 microvolts
 		}
 	
 		vdd1_1:
@@ -305,8 +287,15 @@
 		vdd2_12:
 		vsw_s2:
 		vreg_s2a_1p1: smps2 {
-			// C810 and C811 are rated for 4V with 80% safety being 3.2 V
-			// REVIEW(Krey): Ref.2 uses vreg_s2a_1p125, which is not found in schematics and uses 1.1V ? -> I guess the previous contributor didn't have access to schematics and re-used values from other devices or has access to more references then me to figure out the 1.1? -> Using 1.1 for safety for now
+			/*
+			 * Power for the PM845 regulator?
+			 *
+			 * C818, C810 rated 4V
+			 * C813, C812 rated 6.3 V
+			 * L615 is 470nH ±20%
+			 */
+
+			// REVIEW(Krey): Ref.2 (previous contribution) uses vreg_s2a_1p125, which is not found in schematics and uses 1.1V ? -> I guess the previous contributor didn't have access to schematics and re-used values from other devices or has access to more references then me to figure out the 1.1? -> Using 1.1 for safety for now as i don't know what the VSW_S2 expects
 			// regulator-min-microvolt = <3200000>; // 3.2 V
 			// regulator-max-microvolt = <3200000>; // 3.2 V
 			regulator-min-microvolt = <1100000>; // 1.1 V
@@ -314,57 +303,88 @@
 		}
 
 		vreg_s3a_1p35: smps3 {
-			// C644 and C645 are rated for 6.3 V with 80% being 5.04 V
-			// REVIEW(Krey): This is kinda a big jump from 1.352 V to 5.0.4 V -> Is this a good idea? Or why are other devices set to 1.352 V here ? Apparenrly on beryllium this is not connected anywhere so i guess it makes sense
-			// regulator-min-microvolt = <5200000>; // 5.2 V
-			// regulator-max-microvolt = <5200000>; // 5.2 V
+			/*
+			 * Power for the Rear Camera
+			 *
+			 * C644, C645, C1524, C1532 and C1515 are rated for 6.3 V
+			 * L617 is 0.47uH ±20%
+			 * 2x NCP134AMX105TCG (VIN pin) - Max −0.3 ~ 6 V, rated 0.8 V to 5.5 V [Ref.8]
+			 * NCP134AMX100TCG (VIN pin) - Max −0.3 ~ 6 V, rated 0.8 ~ 5.5 V [Ref. 13]
+			 */
 
-			// REVIEW(Krey): Also Ref.2 is using 1.352 V, reusing that for safety
-			regulator-min-microvolt = <1352000>; // 1.352 V
-			regulator-max-microvolt = <1352000>; // 1.352 V
+			regulator-min-microvolt = <800000>; // 0.8 V
+			regulator-max-microvolt = <5500000>; // 5.5 V
 		};
 
-		// Refer to the note above about this, pending management
-		// vreg_s4a_1p8: smps4 {
-		// 	/*
-		// 	 * TCC-103 Thermistor - No Datasheet
-		// 	 * LMSP2PQP-G91 - No Datasheet
-		// 	 * Power amplifier QM78013 - No Datasheet
-		// 	 * QM52015 - No Datasheet
-		// 	 * QM75001 - Ref.6, Pin VIO, Min +1.65 Typ +1.8 Max +1.95 
-		// 	 * BGSX212MA18 - Ref.10, Pin VIO, Min -0.5, Typ Not Know, Max + 3.6 
-		// 	 * QET4100 - No Datasheet
-		// 	 * SDR845-FC - No Datasheet
-		// 	 * QLN1020 - No Datasheet
-		// 	 * QLN1030 - No Datasheet
-		// 	 * PN80TEV1/C1B023 - No Datasheet, requires NDA signature.. Thanks for nothing NXP
-		// 	 * BCM47755KUB1G - Ref. 11 useless, No Datasheet
-		// 	 * WCN3990 - Pin 94 (VDD18_IO), 1.8 V IO? - No Datasheet
-		// 	 * BM20B-10DS-0.4V(51)
-		// 	 * FSA644BUCX - Pin VCC
-		// 	 * C809, C808, C807, C806, C805, C600, C859, C858, C857, C856, C855, C646, C892, C893, C894, C760, C749, C750, C751 rated at 6.3V
-		// 	 * SMB1355
-		// 	 * KLUDG4U1EA-B0C1 (Flash Chip)
-		// 	 * TAS2557 - Pin DVDD, AVDD, IOVDD
-		// 	 * WCD9340 - Pin VDD_SIDO
-		// 	 * C753, C798, C700 rated at 10V
-		// 	 * WCD9340 - Pin VDD_BUCK
-		// 	 * MAX14689 - Pin VCC
-		// 	 * WCD9340 - Pin VDD_TX, VDD_RX
-		// 	 * TPS22915B - Pin VIN
-		// 	 * CAF99-12136-1032 - Pin det_sw_VCC
-		// 	 * 502426-1410 - Pin 1, 7
-		// 	 * AK8789-L (Hall) - Pin VDD
-		// 	 * TPS22915B (LDO) - Pin VIN
-		// 	 * NCP134AMX150TCG (IR Camera or it's component) - Pin VIN
-		// 	 *
-		// 	 * Decided to go with fixed 1.8 V as that's what compoents that we have datasheet for are calling
-		// 	 */
-		// 	// Handles VDD_1P8_DISP, VDD_MSM_IO for PMI8998
-		// 	// REVIEW(Krey): Refer to Ref. 2 Line 138 which claims that we don't or didn't have support for it in 5.12.8?
-		// 	regulator-min-microvolt = <1800000>; // 1.8 V
-		// 	regulator-max-microvolt = <1800000>; // 1.8 V
-		// }
+		vreg_s4a_1p8: smps4 {
+			/*
+			 * Power for TUNER_CTR, MBPA, 2GPA, HBPA, DRX, ...
+			 *
+			 * TCC-103 Thermistor - No Datasheet
+			 * LMSP2PQP-G91 (VIO pin) - No Datasheet
+			 * Power amplifier QM78013 (VIO pin) - No Datasheet
+			 * QM78012 [Power Amplifier IC] (VIO pin) - No Datasheet
+			 * * C280 rated 25V
+			 * QM52015 (VIO pin) - No Datasheet
+			 * * C229 rated 25V
+			 * QM75001 [front-end power amplier] (VIO pin) - Min +1.65 Typ +1.8 Max +1.95 [Ref.6]
+			 * BGSX212MA18 [DP12T Diversity Cross Switch for Carrier Aggregation] (VIO pin) - Min -0.5, Typ <Not Set>, Max + 3.6 [Ref.10] 
+			 * * C287 rated 6.3V
+			 * QET4100 (VDD_1P8 Pin) - No Datasheet
+			 * * C224 rated 10V
+			 * SDR845-FC (VDD_1P8_DIG pin) - No Datasheet
+			 * * C324 rated 6.3V
+			 * QLN1020 (VDD_1P8 pin) - No Datasheet
+			 * * C335 rated 16V 
+			 * * C338 rated 50V
+			 * QLN1030 (VDD_1P8 pin) - No Datasheet
+			 * * C334 rated 6.3V
+			 * * C333 rated 50V
+			 * QLN1030 (VDD_1P8, ID0 pin) - No Datasheet
+			 * * R220 rated 0R ±5%
+			 * * C350 rated 50V
+			 * * C351 rated 6.3V
+			 * QLN1020 (VDD_1P8, ID0 pin) - No Datasheet
+			 * * R217 rated 0R ±5%
+			 * * C342 rated 16V
+			 * * C344 rated 50V
+			 * PN80TEV1/C1B023 (VDD(PAD) pin)- No Datasheet according to NXP representative it's custom-made part in EOL that they can't tell me any details about including who their customer is due to NDA with them
+			 * * C457 rated 6.3V
+			 * BCM47755KUB1G [GNSS Receiver with Integrated Sensor Hub] (VDD_GNSS_RF, VDD_ADC, VDD_LP_IN, VDD_IO, VDD_MAIN_IN)- No Datasheet, Ref.11 useless
+			 * * C412 rated 6.3V
+			 * WCN3990 [single-die wireless local area network (WLAN) and Bluetooth (BT) combo] (VDD18_IO) - No Datasheet
+			 * * C532, C533 rated 6.3V
+
+			 * Gave up here..
+			 
+			 * BM20B-10DS-0.4V(51)
+			 * FSA644BUCX - Pin VCC
+			 * C809, C808, C807, C806, C805, C600, C859, C858, C857, C856, C855, C646, C892, C893, C894, C760, C749, C750, C751 rated at 6.3V
+			 * SMB1355
+			 * KLUDG4U1EA-B0C1 (Flash Chip)
+			 * TAS2557 - Pin DVDD, AVDD, IOVDD
+			 * WCD9340 - Pin VDD_SIDO
+			 * C753, C798, C700 rated at 10V
+			 * WCD9340 - Pin VDD_BUCK
+			 * MAX14689 - Pin VCC
+			 * WCD9340 - Pin VDD_TX, VDD_RX
+			 * TPS22915B - Pin VIN
+			 * CAF99-12136-1032 - Pin det_sw_VCC
+			 * 502426-1410 - Pin 1, 7
+			 * AK8789-L (Hall) - Pin VDD
+			 * TPS22915B (LDO) - Pin VIN
+			 * NCP134AMX150TCG (IR Camera or it's component) - Pin VIN
+			 *
+			 * Decided to go with fixed 1.8 V as that's what components that we have datasheet for are expecting
+			 */
+			regulator-min-microvolt = <1800000>; // 1.8V
+			regulator-max-microvolt = <1800000>; // 1.8V
+
+			regulator-always-on;
+			regulator-boot-on;
+
+			vin-supply = <&vph_pwr>;
+		}
 
 		vreg_s5a_2p04: smps5 {
 			// C647 and C648 are rated for 6.3 V -> 5.04 V (80% of 6.3)
@@ -430,8 +450,6 @@
 			regulator-max-microvolt = <880000>; // 0.88 V
 			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
-
-		### CONTINUE HERE ###
 
 		vddpx_10:
 		vreg_l2a_1p2: ldo2 {
