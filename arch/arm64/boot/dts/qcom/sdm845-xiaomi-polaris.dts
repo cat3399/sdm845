@@ -145,7 +145,7 @@
 
 &apps_rsc {
 	regulators-0 {
-		compatible = "qcom,pm8998-rpmh-regulators";
+		compatible = "qcom,pm845-rpmh-regulators";
 		qcom,pmic-id = "a";
 
 		vreg_s2a_1p1: smps2 {

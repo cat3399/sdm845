@@ -1,0 +1,254 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * SDM845 Xiaomi Mi 8 Pro (equuleus) device tree
+ *
+ * Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018, XiaoMi, Inc.
+ * Copyright (c) 2024, Jacob Hrbek <kreyren@fsfe.org>
+ */
+
+/dts-v1/;
+
+#include "sdm845-xiaomi-mi8-common.dtsi"
+
+/ {
+	model = "Xiaomi Technologies, Inc. Equuleus MP v2.1";
+	compatible = "xiaomi,equuleus", "qcom,sdm845", "qcom,mtp", "qcom,sdm845-mtp",;
+	
+	/* required for bootloader to select correct board */
+	// REVIEW(Krey): https://github.com/LineageOS/android_kernel_xiaomi_sdm845/blob/lineage-21/arch/arm64/boot/dts/qcom/equuleus-mp-v2.1.dts#L25
+	qcom,board-id = <79 0>;
+
+	/* Regulators */
+	vph_pwr: vph-pwr-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "vph_pwr";
+		regulator-min-microvolt = <3700000>;
+		regulator-max-microvolt = <3700000>;
+	};
+
+	// REVIEW(Krey->Caleb): Taken from 5.12.8 port, unsure if this is still valid
+	/*
+	 * Apparently RPMh does not provide support for PM8998 S4 because it
+	 * is always-on; model it as a fixed regulator.
+	 */
+	vreg_s4a_1p8: pm8998-smps4 {
+		compatible = "regulator-fixed";
+		regulator-name = "vreg_s4a_1p8";
+
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+
+		regulator-boot-on;
+		vin-supply = <&vph_pwr>;
+	};
+};
+
+// REVIEW(Krey): Submitted by Akitlove, untested..
+&display_panel {
+	compatible = "samsung,ea8074";
+	status = "okay";
+};
+
+// REVIEW(Krey): Submitted by Akitlove, untested..
+&i2c14 {
+	status = "okay";
+
+	touchscreen@49 {
+		compatible = "focaltech,ft8719";
+		reg = <0x49>;
+
+		interrupts-extended = <&tlmm 31 IRQ_TYPE_EDGE_FALLING>;
+		reset-gpios = <&tlmm 32 GPIO_ACTIVE_LOW>;
+
+		iovcc-supply = <&vreg_l14a_1p8>;
+
+		pinctrl-0 = <&ts_int_default &ts_reset_default>;
+		pinctrl-1 = <&ts_int_sleep &ts_reset_sleep>;
+		pinctrl-names = "default", "sleep";
+
+		touchscreen-size-x = <1080>;
+		touchscreen-size-y = <2248>;
+	};
+};
+
+// REVIEW(Krey): Used by beryllium, which uses the same PMIC, but different display for this to likely not work
+&mdss_dsi0 {
+	status = "okay";
+	vdda-supply = <&vreg_l26a_1p2>;
+
+	display_panel: panel@0 {
+		reg = <0>;
+		vddio-supply = <&vreg_l14a_1p8>;
+		vddpos-supply = <&lab>;
+		vddneg-supply = <&ibb>;
+
+		backlight = <&pmi8998_wled>;
+		reset-gpios = <&tlmm 6 GPIO_ACTIVE_LOW>;
+
+		status = "disabled";
+
+		port {
+			panel_in_0: endpoint {
+				remote-endpoint = <&mdss_dsi0_out>;
+			};
+		};
+	};
+};
+
+// REVIEW(Krey): Taken from beryllium, unsure if it's correct
+&pmi8998_flash {
+	status = "okay";
+
+	// REVIEW(Krey): Unsure how to figure this out and so commenting out to reduce the risk of hardware damage
+	// led-0 {
+	// 	function = LED_FUNCTION_FLASH;
+	// 	color = <LED_COLOR_ID_WHITE>;
+	// 	led-sources = <1>;
+	// 	led-max-microamp = <500000>;
+	// 	flash-max-microamp = <1500000>;
+	// 	flash-max-timeout-us = <1280000>;
+	// };
+
+	// led-1 {
+	// 	function = LED_FUNCTION_FLASH;
+	// 	color = <LED_COLOR_ID_YELLOW>;
+	// 	led-sources = <2>;
+	// 	led-max-microamp = <500000>;
+	// 	flash-max-microamp = <1500000>;
+	// 	flash-max-timeout-us = <1280000>;
+	// };
+};
+
+// REVIEW(Krey): On beryllium.. Commented out as i don't know how to verify this and to reduce the risk of hardware damage
+/* QUAT I2S Uses 1 I2S SD Line for audio on TAS2559/60 amplifiers */
+// &q6afedai {
+// 	dai@22 {
+// 		reg = <QUATERNARY_MI2S_RX>;
+// 		qcom,sd-lines = <0>;
+// 	};
+// };
+
+// REVIEW(Krey): Unsure about these..
+
+// &sdhc_2 {
+// 	status = "okay";
+
+// 	pinctrl-names = "default";
+// 	pinctrl-0 = <&sdc2_default_state &sdc2_card_det_n>;
+
+// 	vmmc-supply = <&vreg_l21a_2p95>;
+// 	vqmmc-supply = <&vreg_l13a_2p95>;
+
+// 	bus-width = <4>;
+// 	cd-gpios = <&tlmm 126 GPIO_ACTIVE_HIGH>;
+// };
+
+// &sound {
+// 	compatible = "qcom,db845c-sndcard", "qcom,sdm845-sndcard";
+// 	pinctrl-0 = <&quat_mi2s_active
+// 			&quat_mi2s_sd0_active>;
+// 	pinctrl-names = "default";
+// 	model = "Xiaomi Poco F1";
+// 	audio-routing =
+// 		"RX_BIAS", "MCLK",
+// 		"AMIC1", "MIC BIAS1",
+// 		"AMIC2", "MIC BIAS2",
+// 		"AMIC3", "MIC BIAS3";
+
+// 	mm1-dai-link {
+// 		link-name = "MultiMedia1";
+// 		cpu {
+// 			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA1>;
+// 		};
+// 	};
+
+// 	mm2-dai-link {
+// 		link-name = "MultiMedia2";
+// 		cpu {
+// 			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA2>;
+// 		};
+// 	};
+
+// 	mm3-dai-link {
+// 		link-name = "MultiMedia3";
+// 		cpu {
+// 			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA3>;
+// 		};
+// 	};
+
+// 	mm4-dai-link {
+// 		link-name = "MultiMedia4";
+// 		cpu {
+// 			sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA4>;
+// 		};
+// 	};
+
+// 	dai-link-voicemmode1 {
+// 		link-name = "VoiceMMode1";
+// 		cpu {
+// 			sound-dai = <&q6voicedai VOICEMMODE1>;
+// 		};
+// 	};
+
+// 	tas2559-dai-link {
+// 		link-name = "Primary Spkr Playback";
+// 		cpu {
+// 			sound-dai = <&q6afedai QUATERNARY_MI2S_RX>;
+// 		};
+
+// 		platform {
+// 			sound-dai = <&q6routing>;
+// 		};
+
+// 		codec {
+// 			sound-dai =  <&tas2559_codec 0>;
+// 		};
+// 	};
+
+// 	slim-dai-link {
+// 		link-name = "SLIM Playback";
+// 		cpu {
+// 			sound-dai = <&q6afedai SLIMBUS_0_RX>;
+// 		};
+
+// 		platform {
+// 			sound-dai = <&q6routing>;
+// 		};
+
+// 		codec {
+// 			sound-dai = <&wcd9340 0>;
+// 		};
+// 	};
+
+// 	slimcap-dai-link {
+// 		link-name = "SLIM WCD Capture";
+// 		cpu {
+// 			sound-dai = <&q6afedai SLIMBUS_0_TX>;
+// 		};
+
+// 		platform {
+// 			sound-dai = <&q6routing>;
+// 		};
+
+// 		codec {
+// 			sound-dai = <&wcd9340 1>; /* AIF1_CAP */
+// 		};
+// 	};
+
+// 	slimcap2-dai-link {
+// 		link-name = "SLIM WCD Capture 2";
+// 		cpu {
+// 			sound-dai = <&q6afedai SLIMBUS_1_TX>;
+// 		};
+
+// 		platform {
+// 			sound-dai = <&q6routing>;
+// 		};
+
+// 		codec {
+// 			sound-dai = <&wcd9340 3>; /* AIF2_CAP */
+// 		};
+// 	};
+// };

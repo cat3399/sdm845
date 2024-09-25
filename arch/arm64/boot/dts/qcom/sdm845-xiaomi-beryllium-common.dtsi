@@ -178,9 +178,10 @@
 
 &apps_rsc {
 	regulators-0 {
-		compatible = "qcom,pm8998-rpmh-regulators";
+		compatible = "qcom,pm845-rpmh-regulators";
 		qcom,pmic-id = "a";
 
+		// FIXME(Krey): The `vreg_l1a_0p875` does not seem to exist in schematics
 		vdda_mipi_csi0_0p9:
 		vdda_mipi_csi1_0p9:
 		vdda_mipi_csi2_0p9:

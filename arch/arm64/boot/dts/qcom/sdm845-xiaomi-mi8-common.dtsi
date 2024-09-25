@@ -1,0 +1,1367 @@
+// SPDX-License-Identifier: GPL-2.0
+
+/*
+ * SDM845 Xiaomi Mi 8 (SDM845) Family Device Tree Include ("DTSI")
+ *
+ * Copyright (c) 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2024, Jacob Hrbek <kreyren@fsfe.org>
+ *
+ * Designed to provide defaults for the Xiaomi Mi8 Family _with SnapDragon Mobile 845 chip_, which includes:
+ * * xiaomi-dipper (Xiaomi Mi 8)
+ * * xiaomi-equuelus (Xiaomi Mi 8 Pro)
+ * * xiaomi-ursa (Xiaomi Mi 8 Explorer)
+ *
+ * Beware that xiaomi-sirius (Xiaomi Mi 8 SE) and xiaomi-patina (Xiaomi Mi 8 Lite) use different chips which this DTSI is not compatible with!
+ *
+ * Additionaly ursa is often sold as Xiaomi Mi 8 Pro with titanium black color outside of china to share the firmware with equuelus which might result in some incompatibilities and unforseen issues, thus the device should be treated as equuelus as long as it's using it's firmware. So far all reviewed phones has the same mainboard. There might be issues with ursa using the first revision of mainboard which is rare.
+ *
+ * Teminology:
+ *  * SDM845 - SnapDragon Mobile 845
+ *
+ * References:
+ *  1. FDT Dump From MUIU (Android): https://github.com/user-attachments/files/16667567/fdt_dump.txt
+ *  2. Compatibility submitted in sdm845-mainline for kernel version 5.12.8: https://gitlab.com/sdm845-mainline/linux/-/commit/9a023cf2ea5fa4a22c1ad5039240f08a3c5432cf
+ *  3. Firmware Breakdown: https://wiki.debian.org/InstallingDebianOn/SHIFT/SHIFT6mq#Firmware
+ *  4. DTS in linux 4.9 from LineageOS: https://github.com/LineageOS/android_kernel_xiaomi_sdm845
+ *   5. Dmesg dump from LineageOS 21: https://github.com/user-attachments/files/16684801/android.log
+ *   6. QM75001 datasheet: https://www.datasheets360.com/pdf/-5786772158464047528
+ *   7. PCB Schematics: https://secyukle.com/dosya/uploads/schematics/Xiaomi%2BMi8%2B%28dipper%29%2BSchematic.rar
+ *   8. NCP134AMX105TCG datasheet: https://www.onsemi.com/pdf/datasheet/ncp134-d.pdf
+ *   9. TCC-103 datasheet: https://thetriac.com/view/768609/TTC-103.html
+ *   10. BGSX212MA18 Datasheet: https://www.alldatasheet.com/datasheet-pdf/view/1029718/INFINEON/BGSX212MA18.html
+ *   11. BCM47755KUB1G Datasheet: https://www.alldatasheet.com/datasheet-pdf/view/1022771/BOARDCOM/BCM47755KUB1G.html
+ *   12. PostMarketOS Wiki About the family of devices: https://wiki.postmarketos.org/wiki/Xiaomi_Mi_8_(SDM845)#Debug_UART
+ *     12.1. Details on the Debug UART: https://wiki.postmarketos.org/wiki/Xiaomi_Mi_8_(SDM845)#Debug_UART
+ *   13. NCP134AMX100TCG Datasheet: https://eu.mouser.com/datasheet/2/308/1/NCP134_D-2316982.pdf
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/leds/common.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/linux-event-codes.h>
+#include <dt-bindings/pinctrl/qcom,pmic-gpio.h>
+#include <dt-bindings/regulator/qcom,rpmh-regulator.h>
+#include <dt-bindings/sound/qcom,q6afe.h>
+#include <dt-bindings/sound/qcom,q6asm.h>
+#include <dt-bindings/sound/qcom,q6afe.h>
+#include <dt-bindings/sound/qcom,q6asm.h>
+#include <dt-bindings/sound/qcom,q6voice.h>
+#include "sdm845.dtsi"
+#include "sdm845-wcd9340.dtsi"
+
+// REVIEW(Krey): In Ref. 5 on Line 311~313 it outputs these used
+// #include "pm8998.dtsi" // PMIC@SID0: PM8998 v2.0 options: 0, 0, 0, 0↵
+#include "pm845.dtsi"
+#include "pm8005.dtsi" // PMIC@SID4: PM8005 v2.0 options: 0, 0, 0, 0↵
+#include "pmi8998.dtsi" // PMIC@SID2: PMI8998 v2.1 options: 0, 0, 0, 0↵
+
+/*
+ * Delete following upstream (sdm845.dtsi) reserved
+ * memory mappings which are different in this family of devices.
+ */
+/delete-node/ &tz_mem; // Does not seem to exist on this family of devices
+/delete-node/ &adsp_mem;
+/delete-node/ &wlan_msa_mem;
+/delete-node/ &mpss_region;
+/delete-node/ &venus_mem;
+/delete-node/ &cdsp_mem;
+/delete-node/ &mba_region;
+/delete-node/ &slpi_mem;
+/delete-node/ &spss_mem;
+/delete-node/ &rmtfs_mem;
+
+/ {
+	// REVIEW(Krey): The formfactor is 'slate', but the DTS doesn't differenciate it?
+	chassis-type = "handset";
+	qcom,msm-id = <321 0x20001>; // Set the unique ID allocated to the family of boards
+
+	aliases {
+		// REVIEW(Krey): The DEBUG_UART_TX is GPIO 4 and DEBUG_UART_RX on GPIO 5, should these be adjusted?
+		serial0 = &uart9;
+		serial1 = &uart6;
+	};
+
+	chosen {
+		// More informations about the Debug UART can be found in Ref. 12.1
+		stdout-path = "serial0:115200n8";
+	};
+
+	/* Reserved memory changes from downstream */
+	reserved-memory {
+		/*
+		 * From Dump of /sys/firmware/fdt on EQUULEUS (Reflashed URSA) from TWRP with MIUI on the device:
+		 * - hyp_region@85700000
+		 * - xbl_region@85e00000
+		 * - removed_region@85fc0000
+		 * - qseecom_region@0x8ab00000
+		 * - camera_region@0x8bf00000
+		 * - ips_fw_region@0x8c400000
+		 * - ipa_gsi_region@0x8c410000
+		 * - gpu_region@0x8c415000
+		 * - adsp_region@0x8c500000
+		 * - wlan_fw_region@0x8e300000
+		 * - modem_region@0x8e400000
+		 * - video_region@0x95c00000
+		 * - cdsp_region@0x96100000
+		 * - mba_region@0x96900000
+		 * - slpi_region@0x96b00000
+		 * - pil_spss_region@0x97f00000
+		 * - cont_splash_region@9d400000
+		 * - ramoops@b0000000
+		 * - ramdump_fb_region@af000000
+		 */
+
+		adsp_mem: adsp@8c500000 {
+			reg = <0 0x8c500000 0 0x1e00000>;
+			no-map;
+		};
+
+		wlan_msa_mem: wlan-msa@8e300000 {
+			reg = <0 0x8e300000 0 0x100000>;
+			no-map;
+		};
+
+		mpss_region: mpss@8e400000 {
+			reg = <0 0x8e400000 0 0x7800000>;
+			no-map;
+		};
+
+		venus_mem: venus@95c00000 {
+			reg = <0 0x95c00000 0 0x500000>;
+			no-map;
+		};
+
+		cdsp_mem: cdsp@96100000 {
+			reg = <0 0x96100000 0 0x800000>;
+			no-map;
+		};
+
+		mba_region: mba@96900000 {
+			reg = <0 0x96900000 0 0x200000>;
+			no-map;
+		};
+
+		slpi_mem: slpi@96b00000 {
+			reg = <0 0x96b00000 0 0x1400000>;
+			no-map;
+		};
+
+		spss_mem: spss@97f00000 {
+			reg = <0 0x97f00000 0 0x100000>;
+			no-map;
+		};
+
+		/*
+		 * The rmtfs memory region in downstream is 'dynamically allocated'
+		 * but given the same address every time. Hard code it as this address is
+		 * where the modem firmware expects it to be.
+		 */
+		rmtfs_mem: rmtfs@f7301000 {
+			compatible = "qcom,rmtfs-mem";
+			reg = <0 0xf7301000 0 0x200000>;
+			no-map;
+
+			qcom,client-id = <1>;
+			qcom,vmid = <15>;
+		};
+		
+		/*
+		 * It seems like reserving the old rmtfs_mem region is also needed to prevent
+		 * random crashes which are most likely modem related, more testing needed.
+		 */
+		removed_region: removed-region@88f00000 {
+			no-map;
+			reg = <0 0x88f00000 0 0x200000>;
+		};
+
+		// ramoops: ramoops@b0000000 {
+		// 	compatible = "ramoops";
+		// 	// REVIEW(Krey): The '0x400000' is wrong, i don't know how to figure it out
+		// 	reg = <0 b0000000 0 0x400000>;
+		// 	record-size = <0x40000>;
+		// 	console-size = <0x40000>;
+		// 	ftrace-size = <0x40000>;
+		// 	// REVIEW(Krey): 0x200000 also likely wrong
+		// 	pmsg-size = <0x200000>;
+		// // REVIEW(Krey): No idea how to determine the `16` here
+		// 	ecc-size = <16>;
+		// };
+	};
+
+	vph_pwr: vph-pwr-regulator {
+		compatible = "regulator-fixed";
+		regulator-name = "vph_pwr";
+		regulator-min-microvolt = <3700000>;
+		regulator-max-microvolt = <3700000>;
+	};
+};
+
+// Audio Stream DMA Processor ("ADSP") designed to handle Direct Memory Access (DMA) operations for audio streams in SDM845
+&adsp_pas {
+	status = "okay";
+
+	// Requires a blob to function
+	firmware-name = "qcom/sdm845/mi8/adsp.mbn";
+};
+
+// TODO(Krey): Check all min and max volts
+
+/*
+ * Regulator declaration
+ *
+ * Requires access to schematics (Ref. 7) and relevant datasheets to figure out how the regulator is wired and at what minima and maxima it's expected to operate.
+ *
+ * Refer to <linux/Documentation/devicetree/bindings/regulator/qcom,rpmh-regulator.yaml> for details
+ */
+&apps_rsc {
+	regulators-0 { // PM845
+		compatible = "qcom,pm845-rpmh-regulators"; // Nearly identical to PM8998 (PMIC)
+		qcom,pmic-id = "a";
+
+		vdd-s1-supply = <&vph_pwr>; // VDD_S1
+		vdd-s2-supply = <&vph_pwr>; // VDD_S2
+		vdd-s3-supply = <&vph_pwr>; // VDD_S3
+		vdd-s4-supply = <&vph_pwr>; // VDD_S4
+		vdd-s5-supply = <&vph_pwr>; // VDD_S5
+		vdd-s6-supply = <&vph_pwr>; // VDD_S6
+		vdd-s7-supply = <&vph_pwr>; // VDD_S7
+		vdd-s8-supply = <&vph_pwr>; // VDD_S8
+		vdd-s9-supply = <&vph_pwr>; // VDD_S9
+		vdd-s10-supply = <&vph_pwr>; // VDD_S10
+		vdd-s11-supply = <&vph_pwr>; // VDD_S11
+		vdd-s12-supply = <&vph_pwr>; // VDD_S12
+		vdd-s13-supply = <&vph_pwr>; // VDD_S13
+
+		vdd-l1-l27-supply = <&vreg_s7a_1p025>; // VDD_L1_27
+		vdd-l2-l8-l17-supply = <&vreg_s3a_1p35>; // VDD_L2_8_17
+		vdd-l3-l11-supply = <&vreg_s7a_1p025>; // VDD_L3_11
+		vdd-l4-l5-supply = <&vreg_s7a_1p025>; // VDD_L4_5
+		vdd-l6-supply = <&vph_pwr>; // VDD_L6
+		vdd-l7-l12-l14-l15-supply = <&vreg_s5a_2p04>; // VDD_L7_12_14_15
+		vdd-l9-supply = <&vreg_bob>; // VDD_L9
+		vdd-l10-l23-l25-supply = <&vreg_bob>; // VDD_L10_23_25
+		vdd-l13-l19-l21-supply = <&vreg_bob>; // VDD_L13_19_21
+		vdd-l16-l28-supply = <&vreg_bob>; // VDD_L16_28
+		vdd-l18-l22-supply = <&vreg_bob>; // VDD_L18_22
+		vdd-l20-l24-supply = <&vreg_bob>; // VDD_L20_24
+		vdd-l26-supply = <&vreg_s3a_1p35>; // VDD_L26
+
+		vin-lvs-1-2-supply = <&vreg_s4a_1p8>; // VIN_LVS_1_2
+
+		vdd_ldo_xo_rf = <&vreg_s5a_2p04>; // VDD_LDO_XO_RF
+
+		vdda_ebi0_1:
+		vdda_ebi0_2:
+		vdda_ebi1_1:
+		vdda_ebi2_1:
+		vdda_ebi2_2:
+		vdda_ebi3_1:
+		vdda_ebi3_2:
+		vdda_cc_ebi01:
+		vdda_cc_ebi23:
+		vsw_s1:
+		vreg_s1a_0p8: smps1 {
+			/*
+			 * Power for the PM845 regulator?
+			 *
+			 * C644, C645, C1524 rated 6.3V
+			 * NCP134AMX105TCG (VIN pin) - Max −0.3 ~ 6 V, rated 0.8 ~ 5.5 V [Ref.8]
+			 * NCP134AMX100TCG (VIN pin) - Max −0.3 ~ 6 V, rated 0.8 ~ 5.5 V [Ref. 13]
+			 */
+			regulator-min-microvolt = <800000>; // 0.8V = 800 000 microvolts
+			regulator-max-microvolt = <5500000>; // 5.5V = 5 500 000 microvolts
+		}
+	
+		vdd1_1:
+		vdd2_2:
+		vdd2_3:
+		vdd2_4:
+		vdd2_5:
+		vdd2_6:
+		vdd2_7:
+		vdd2_8:
+		vdd2_9:
+		vdd2_10:
+		vdd2_11:
+		vdd2_12:
+		vsw_s2:
+		vreg_s2a_1p1: smps2 {
+			/*
+			 * Power for the PM845 regulator?
+			 *
+			 * C818, C810 rated 4V
+			 * C813, C812 rated 6.3 V
+			 * L615 is 470nH ±20%
+			 */
+
+			// REVIEW(Krey): Ref.2 (previous contribution) uses vreg_s2a_1p125, which is not found in schematics and uses 1.1V ? -> I guess the previous contributor didn't have access to schematics and re-used values from other devices or has access to more references then me to figure out the 1.1? -> Using 1.1 for safety for now as i don't know what the VSW_S2 expects
+			// regulator-min-microvolt = <3200000>; // 3.2 V
+			// regulator-max-microvolt = <3200000>; // 3.2 V
+			regulator-min-microvolt = <1100000>; // 1.1 V
+			regulator-max-microvolt = <1100000>; // 1.1 V
+		}
+
+		vreg_s3a_1p35: smps3 {
+			/*
+			 * Power for the Rear Camera
+			 *
+			 * C644, C645, C1524, C1532 and C1515 are rated for 6.3 V
+			 * L617 is 0.47uH ±20%
+			 * 2x NCP134AMX105TCG (VIN pin) - Max −0.3 ~ 6 V, rated 0.8 V to 5.5 V [Ref.8]
+			 * NCP134AMX100TCG (VIN pin) - Max −0.3 ~ 6 V, rated 0.8 ~ 5.5 V [Ref. 13]
+			 */
+
+			regulator-min-microvolt = <800000>; // 0.8 V
+			regulator-max-microvolt = <5500000>; // 5.5 V
+		};
+
+		vreg_s4a_1p8: smps4 {
+			/*
+			 * Power for TUNER_CTR, MBPA, 2GPA, HBPA, DRX, ...
+			 *
+			 * TCC-103 Thermistor - No Datasheet
+			 * LMSP2PQP-G91 (VIO pin) - No Datasheet
+			 * Power amplifier QM78013 (VIO pin) - No Datasheet
+			 * QM78012 [Power Amplifier IC] (VIO pin) - No Datasheet
+			 * * C280 rated 25V
+			 * QM52015 (VIO pin) - No Datasheet
+			 * * C229 rated 25V
+			 * QM75001 [front-end power amplier] (VIO pin) - Min +1.65 Typ +1.8 Max +1.95 [Ref.6]
+			 * BGSX212MA18 [DP12T Diversity Cross Switch for Carrier Aggregation] (VIO pin) - Min -0.5, Typ <Not Set>, Max + 3.6 [Ref.10] 
+			 * * C287 rated 6.3V
+			 * QET4100 (VDD_1P8 Pin) - No Datasheet
+			 * * C224 rated 10V
+			 * SDR845-FC (VDD_1P8_DIG pin) - No Datasheet
+			 * * C324 rated 6.3V
+			 * QLN1020 (VDD_1P8 pin) - No Datasheet
+			 * * C335 rated 16V 
+			 * * C338 rated 50V
+			 * QLN1030 (VDD_1P8 pin) - No Datasheet
+			 * * C334 rated 6.3V
+			 * * C333 rated 50V
+			 * QLN1030 (VDD_1P8, ID0 pin) - No Datasheet
+			 * * R220 rated 0R ±5%
+			 * * C350 rated 50V
+			 * * C351 rated 6.3V
+			 * QLN1020 (VDD_1P8, ID0 pin) - No Datasheet
+			 * * R217 rated 0R ±5%
+			 * * C342 rated 16V
+			 * * C344 rated 50V
+			 * PN80TEV1/C1B023 (VDD(PAD) pin)- No Datasheet according to NXP representative it's custom-made part in EOL that they can't tell me any details about including who their customer is due to NDA with them
+			 * * C457 rated 6.3V
+			 * BCM47755KUB1G [GNSS Receiver with Integrated Sensor Hub] (VDD_GNSS_RF, VDD_ADC, VDD_LP_IN, VDD_IO, VDD_MAIN_IN)- No Datasheet, Ref.11 useless
+			 * * C412 rated 6.3V
+			 * WCN3990 [single-die wireless local area network (WLAN) and Bluetooth (BT) combo] (VDD18_IO) - No Datasheet
+			 * * C532, C533 rated 6.3V
+
+			 * Gave up here..
+			 
+			 * BM20B-10DS-0.4V(51)
+			 * FSA644BUCX - Pin VCC
+			 * C809, C808, C807, C806, C805, C600, C859, C858, C857, C856, C855, C646, C892, C893, C894, C760, C749, C750, C751 rated at 6.3V
+			 * SMB1355
+			 * KLUDG4U1EA-B0C1 (Flash Chip)
+			 * TAS2557 - Pin DVDD, AVDD, IOVDD
+			 * WCD9340 - Pin VDD_SIDO
+			 * C753, C798, C700 rated at 10V
+			 * WCD9340 - Pin VDD_BUCK
+			 * MAX14689 - Pin VCC
+			 * WCD9340 - Pin VDD_TX, VDD_RX
+			 * TPS22915B - Pin VIN
+			 * CAF99-12136-1032 - Pin det_sw_VCC
+			 * 502426-1410 - Pin 1, 7
+			 * AK8789-L (Hall) - Pin VDD
+			 * TPS22915B (LDO) - Pin VIN
+			 * NCP134AMX150TCG (IR Camera or it's component) - Pin VIN
+			 *
+			 * Decided to go with fixed 1.8 V as that's what components that we have datasheet for are expecting
+			 */
+			regulator-min-microvolt = <1800000>; // 1.8V
+			regulator-max-microvolt = <1800000>; // 1.8V
+
+			regulator-always-on;
+			regulator-boot-on;
+
+			vin-supply = <&vph_pwr>;
+		}
+
+		vreg_s5a_2p04: smps5 {
+			// C647 and C648 are rated for 6.3 V -> 5.04 V (80% of 6.3)
+			// regulator-min-microvolt = <5040000>; // 5.04 V
+			// regulator-max-microvolt = <5040000>; // 5.04 V
+			// REVIEW(Krey): Ref.2 uses these values unclear why, but re-using them for safety..
+			regulator-min-microvolt = <1904000>; // 1.904 V
+			regulator-max-microvolt = <2040000>; // 2.040 V 
+
+		};
+
+		// Goes to pins of SDM845-F-914BMPSP-AA that we don't have datasheet for or reference from other devices -> Keep commented out until we get reliable values
+		// // VDDA_MIPI_DSI0_0P9
+		// adda_apc_ppl:
+		// vdda_lpa_ppl:
+		// vddmx_8:
+		// vreg_s6a_0p: smps6 {
+		// 	// C853 is rated for 6.3 V
+		// 	regulator-min-microvolt = <???>; // ??? V
+		// 	regulator-max-microvolt = <???>; // ??? V
+		// }
+
+		vreg_s7a_1p025: smps7 {
+			// C640 and C639 are rated for 6.3 V, feeds power back to itself (pm845), lacks datasheet -> Re-use values from oneplus6 DTS which is what Ref.2 is also doing
+			regulator-min-microvolt = <900000>; // 0.9 V
+			regulator-max-microvolt = <1028000>; // 1.028 V 
+		};
+
+		// vdd_gfx_5:
+		// vreg_s1c_s4c_0p75: smps8 {
+		// 	/*
+		// 	 * C816, C817, C817, C819 are rated for 4 V
+		// 	 * C895 is rated for 6.3 V
+		// 	 */
+		// 	// FIXME(Krey): No Datasheet to figure out sane values and unsure if 80% of 4V is good idea
+		// 	regulator-min-microvolt = <???>;
+		// 	regulator-max-microvolt = <???>;
+		// }
+
+		vdda_qlink_lv:
+		vdda_qlink_lv_ck:
+		vdda_qrefs_0p875:
+		vdd_qusb_hs0:
+		vdda_mipi_dsi0_pll:
+		vdda_mipi_dsi1_pll:
+		vdda_mipi_csi0_0p9:
+		vdda_mipi_csi1_0p9:
+		vdda_mipi_csi2_0p9:
+		vdd_mipi_dsi0_1p2:
+		vdda_pcie_core:
+		vdda_ufs1_core:
+		vdda_hp_pcie_core:
+		vdda_pll_cc_ebi01:
+		vdda_pll_cc_ebi02:
+		vdda_sp_sensor:
+		vdda_ufs2_core:
+		vdda_usb2_ss_core:
+		vdda_usb1_ss_core:
+		vreg_l1a_0p88: ldo1 {
+			// REVIEW(Krey): Sane? beryllium uses vreg_l1a_0p875 which is not found in the schematics either so it's probably re-using that from either axolotl or oneplus6
+			// Feeds power to itself as SDM845-F-914BMPSP-AA, No datasheet -> Re-use values from xiaomi-beryllium
+			regulator-min-microvolt = <880000>; // 0.88 V
+			regulator-max-microvolt = <880000>; // 0.88 V
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vddpx_10:
+		vreg_l2a_1p2: ldo2 {
+			// REVIEW(Krey): Sane?
+			// Feeds power to itself as SDM845-F-914BMPSP-AA, No datasheet -> Re-use values from oneplus6
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+			regulator-always-on;
+		};
+
+		// REVIEW(Krey): The `VREG_L3A_1P0` and `VREG_L8A_1P2` are connected, but separated by a resistor R222 -> Is this ok to write it this way? E.g. Oneplus common doesn't include this regulator maybe bcs it goes in the RF transceiver?
+
+		vdd_1p0_xo:
+		vdd_1p0_gnss:
+		vdd_1p0_rx0:
+		vdd_1p0_rx1:
+		vdd_1p0_rx2:
+		vdd_1p0_rx:
+		vreg_l3a_1p0: ldo3 {
+			// No datasheet -> Re-use values from shift axolotl
+			regulator-min-microvolt = <1000000>;
+			regulator-max-microvolt = <1000000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		// vdd_ssc_mx_1:
+		// vdd_ssc_mx_2:
+		// vdd_ssc_mx_3:
+		// vreg_l4a_op8: ldo4 {
+		//	// No Datasheet or other reference for this
+		// 	regulator-min-microvolt = <???>;
+		// 	regulator-max-microvolt = <???>;
+		// 	regulator-initial-mode = <???>;
+		// }
+
+		vdd_wcss_cx_1:
+		vdda_wcss_pll:
+		vdd_wcss_cx_2:
+		vdd_wcss_mx_1:
+		vdd_wcss_mx_2:
+		vreg_l5a_0p8: ldo5 {
+			// No Datasheet, re-using from other devices
+			regulator-min-microvolt = <800000>;
+			regulator-max-microvolt = <800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vddpx_13:
+		vreg_l6a_1p8: ldo6 {
+			// No Datasheet, re-using from other devices
+			regulator-min-microvolt = <1856000>;
+			regulator-max-microvolt = <1856000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vdd18_xtal:
+		vdd18_vc0_ch1:
+		vreg_l7a_1p8: ldo7 {
+			// No Datasheet, re-using from other devices
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vdd_1p2_ana:
+		vdd_1p2_ana1:
+		vdd_1p2_ana2:
+		vdd_1p2_ana3:
+		vdd_1p2_ana4:
+		vdd_1p2_rx0:
+		vdd_1p2_tx0:
+		vdd_1p2_rx1:
+		vdd_1p2:
+		vreg_l8a_1p2: ldo8 {
+			// No Datasheet, re-using from other devices
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1248000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		// VDD(SIM_PMU_1)
+		vddpx_5:
+		vreg_l9a_1p8: ldo9 {
+			// No Datasheet, re-using from other devices
+			regulator-min-microvolt = <1704000>;
+			regulator-max-microvolt = <2928000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		// VDD(SIM_PMU_2)
+		vddpx_6:
+		vreg_l10a_1p8: ldo10 {
+			// No Datasheet, re-using from other devices
+			regulator-min-microvolt = <1704000>;
+			regulator-max-microvolt = <2928000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vdd_1p0_dig1:
+		vdd_1p0_dig2:
+		vreg_l11a_1p0: ldo11 {
+			// No Datasheet, re-using from other devices
+			regulator-min-microvolt = <1000000>;
+			regulator-max-microvolt = <1048000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		// REVIEW(Krey): Connected to ldo1 and ldo20 are connected together, but separated by R814, unsure how to handle for `VDDA_MIPI_DSI0_0P9` and `VDDA_MIPI_DSI1_0P9`
+
+		// VREG_BB_CLK
+		// SHDN_N
+		vdda_qrefs_1p8:
+		vdd_qfprom:
+		vdd_qfprom_sp:
+		vdda_apc1_cs_1p8:
+		vdda_gfx_cs_1p8:
+		vdda_qusb_hs0_1p8:
+		vddpx_11:
+		vreg_l12a_1p8: ldo12 {
+			// No Datasheet, re-using from other devices
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vddpx_2:
+		vreg_l13a_2p95: ldo13 {
+			// No Datasheet, re-using from other devices
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <2960000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_l14a_1p88: ldo14 {
+			// No Datasheet, re-using from other devices
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vdd_1p8_tx0:
+		vdd_1p8_ana0:
+		vdd_1p8_tx1:
+		vdd_1p8_ana1:
+		vdd_1p8_fbrx:
+		vreg_l15a_1p8: ldo15 {
+			// No Datasheet, re-using from other devices
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		// Just goes to bunch of VDDs
+		vreg_l16a_2p7: ldo16 {
+			// No Datasheet, re-using from other devices
+			regulator-min-microvolt = <2704000>;
+			regulator-max-microvolt = <2704000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		/* WCN3990 Pins:
+		 * 27 - VDD13_WL_CH0
+		 * 84 - VDD13_WL_CH1
+		 * 33 - VDD13_WL_SYNTH_CH0
+		 * 90 - VDD13_WL_SYNTH_CH1
+		 * 12 - VDD13_BT_SYNTH
+		 * 66 - VDD13_PM
+		 *  8 - VDD13_FM
+		 * 11 - VDD13_BT_BB
+		 * 18 - VDD13_BT_FM_BBPLL 
+		 */
+		vdd13_wl_ch0:
+		vdd13_wl_ch1:
+		vdd13_wl_synth_ch0:
+		vdd13_wl_synth_ch1:
+		vdd13_bt_synth:
+		vdd13_pm:
+		vdd13_fm:
+		vdd13_bt_bb:
+		vdd13_bt_bb:
+		vdd13_bt_fm_bbpll:
+		vdd_wcss_adcdac_1:
+		vdd_wcss_adcdac_2:
+		vreg_l17a_1p3: ldo17 {
+			// No Datasheet, re-using from other devices
+			regulator-min-microvolt = <1304000>;
+			regulator-max-microvolt = <1304000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		// According the Ref.7 it's not connected (NC) in PM845, unsure how to handle
+		// vreg_l18a_2p7: ldo18 {
+		//  // No Datasheet, re-using from other devices
+		// 	regulator-min-microvolt = <2704000>;
+		// 	regulator-max-microvolt = <2960000>;
+		// 	regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		// };
+
+		vreg_l19a_3p0: ldo19 {
+			// No Datasheet, re-using from other devices
+			regulator-min-microvolt = <2856000>;
+			regulator-max-microvolt = <3104000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+
+		vreg_l20a_2p95: ldo20 {
+			// No Datasheet, re-using from other devices
+			regulator-min-microvolt = <2704000>;
+			regulator-max-microvolt = <2960000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vreg_bob:
+		vreg_l21a_2p95: ldo21 {
+			// No Datasheet, re-using from other devices
+			regulator-min-microvolt = <2704000>;
+			regulator-max-microvolt = <2960000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		// VIN for NCP160AFCS180T2G
+		vreg_l22a_2p85: ldo22 {
+			// NCP160AFCS180T2G, Pin VIN
+			regulator-min-microvolt = <2864000>;
+			regulator-max-microvolt = <3312000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		/* WCN3990 Pins:
+		 * 86 - VDD33_WL_CH1
+		 * 92 - VDD33_WL_DRV_CH1
+		 */
+		vdd33_wl_ch1:
+		vdd33_wl_drv_ch1:
+		vreg_l23a_3p3: ldo23 {
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3312000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vdda_qusb_hs0_3p1:
+		vreg_l24a_3p075: ldo24 {
+			regulator-min-microvolt = <3088000>;
+			regulator-max-microvolt = <3088000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		/* WCN3990 Pins:
+		 * 29 - VDD33_WL_CH0
+		 * 35 - VDD33_WL_5G_DRV_CH0
+		 *  6 - VDD33_WL_BT_DRV_CH0
+		 *  9 - VDD33_BT_PA_CH2
+		 * 23 - VDD33_FEM
+		 * 30 - VDD33_PM_DLDO
+		 */
+		vdd33_wl_ch0:
+		vdd33_wl_5g_drv_ch0:
+		vdd33_wl_bt_drv_ch0:
+		vdd33_bt_pa_ch2:
+		vdd33_fem:
+		vdd33_pm_dldo:
+		vreg_l25a_3p3: ldo25 {
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3312000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vdda_hv_ebi0:
+		vdda_hv_ebi1:
+		vdda_hv_ebi2:
+		vdda_hv_ebi3:
+		vdda_pcie_1p2:
+		vdda_ufs1_1p2:
+		vdda_hp_pcie_1p2:
+		vdda_ufs2_1p2:
+		vdda_usb1_ss_1p2:
+		vdda_usb2_ss_1p2:
+		vdda_mipi_csi_1p25:
+		vdda_mipi_dsi0_1p2:
+		vdda_mipi_dsi1_1p2:
+		vreg_l26a_1p2: ldo26 {
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_HPM>;
+		};
+
+		vdd_ssc_cx_1:
+		vdd_ssc_cx_2:
+		vdd_ssc_cx_3:
+		vreg_l27a_0p75: ldo27 {
+			regulator-min-microvolt = <???>;
+			regulator-max-microvolt = <???>;
+			regulator-initial-mode = <???>;
+		}
+
+		vreg_l28a_3p3: ldo28 {
+			regulator-min-microvolt = <???>;
+			regulator-max-microvolt = <???>;
+			regulator-initial-mode = <???>;
+		};
+
+		// Not found in schematics
+		// vreg_lvs1a_1p8: lvs1 {
+		// 	regulator-min-microvolt = <1800000>;
+		// 	regulator-max-microvolt = <1800000>;
+		// };
+
+		// AP_CS
+		// AP_SCL / AP_SCLK
+		vreg_lvs2a_1p8: lvs2 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+		};
+	};
+
+	regulators-1 {
+		compatible = "qcom,pmi8998-rpmh-regulators";
+		qcom,pmic-id = "b";
+
+		vdd-bob-supply = <&vph_pwr>; // VDD_BOB
+
+		vreg_bob: bob {
+			regulator-min-microvolt = <3312000>;
+			regulator-max-microvolt = <3600000>;
+			regulator-initial-mode = <RPMH_REGULATOR_MODE_AUTO>;
+			regulator-allow-bypass;
+		};
+	};
+
+	regulators-2 {
+		compatible = "qcom,pm8005-rpmh-regulators";
+		qcom,pmic-id = "c";
+
+		vdd-s1-supply = <&vph_pwr>; // VDD_S1
+		vdd-s2-supply = <&vph_pwr>; // VDD_S2
+		vdd-s3-supply = <&vph_pwr>; // VDD_S3
+		vdd-s4-supply = <&vph_pwr>; // VDD_S4
+
+		vdd_modem_1:
+		vdd_modem_2:
+		vdd_modem_3:
+		vdd_modem_4:
+		vdd_modem_5:
+		vdd_modem_6:
+		vdd_modem_7:
+		vreg_s2c_0p75: smps2 {
+			regulator-min-microvolt = <???>;
+			regulator-max-microvolt = <???>;
+		}
+
+		// EBI0_CAL:
+		// EBI2_CAL:
+		// ZQ0_0
+		// ZQ0_3
+		// ZQ1_0
+		// ZQ1_3
+		// VDDIO_EBI0_1
+		// VDDIO_EBI0_2
+		// VDDIO_EBI0_3
+		// VDDIO_EBI0_4
+		// VDDIO_EBI1_1
+		// VDDIO_EBI1_2
+		// VDDIO_EBI1_3
+		// VDDIO_EBI1_4
+		// VDDIO_EBI2_1
+		// VDDIO_EBI2_2
+		// VDDIO_EBI2_3
+		// VDDIO_EBI2_4
+		// VDDIO_EBI3_1
+		// VDDIO_EBI3_2
+		// VDDIO_EBI3_3
+		// VDDIO_EBI3_4
+		// VDDIO_CK_EBI0
+		// VDDIO_CK_EBI1
+		// VDDIO_CK_EBI2
+		// VDDIO_CK_EBI3
+		// VDDQ_1
+		// VDDQ_2
+		// VDDQ_3
+		// VDDQ_4
+		// VDDQ_5
+		// VDDQ_6
+		// VDDQ_7
+		// VDDQ_8
+		vreg_s3c_0p6: smps3 {
+			regulator-min-microvolt = <600000>;
+			regulator-max-microvolt = <600000>;
+		};
+	};
+};
+
+&cdsp_pas {
+	status = "okay";
+	firmware-name = "qcom/sdm845/mi8/cdsp.mbn";
+};
+
+&gcc {
+	protected-clocks = <GCC_QSPI_CORE_CLK>,
+				<GCC_QSPI_CORE_CLK_SRC>,
+				<GCC_QSPI_CNOC_PERIPH_AHB_CLK>,
+				<GCC_LPASS_Q6_AXI_CLK>,
+				<GCC_LPASS_SWAY_CLK>;
+};
+
+// REVIEW(Krey): Needed? Used by beryllium
+&gmu {
+	status = "okay";
+};
+
+// REVIEW(Krey): Needed? Used by beryllium
+&gpi_dma0 {
+	status = "okay";
+};
+
+// REVIEW(Krey): Needed? Used by beryllium
+&gpi_dma1 {
+	status = "okay";
+};
+
+&gpu {
+	status = "okay";
+
+	zap-shader {
+		memory-region = <&gpu_mem>;
+		firmware-name = "qcom/sdm845/mi8/a630_zap.mbn";
+	};
+};
+
+// REVIEW(Krey): Used by beryllium which should use the same modem for these to be valid?
+&ibb {
+	regulator-min-microvolt = <4600000>;
+	regulator-max-microvolt = <6000000>;
+	regulator-over-current-protection;
+	regulator-pull-down;
+	regulator-soft-start;
+	qcom,discharge-resistor-kohms = <300>;
+};
+
+&lab {
+	regulator-min-microvolt = <4600000>;
+	regulator-max-microvolt = <6000000>;
+	// REVIEW(Krey): Unsure why is this commented out
+	// regulator-over-current-protection;
+	regulator-pull-down;
+	regulator-soft-start;
+};
+
+&mdss {
+	status = "okay";
+};
+
+&mdss_dsi0_out {
+	remote-endpoint = <&panel_in_0>;
+	data-lanes = <0 1 2 3>;
+};
+
+&mdss_dsi0_phy {
+	status = "okay";
+	// REVIEW(Krey->Caleb): This doesn't seem to match with what's in the schematics, maybe it means VREG_L1A_0P88 ?
+	vdds-supply = <&vreg_l1a_0p875>;
+};
+
+/* Modem/wifi*/
+&mss_pil {
+	status = "okay";
+	firmware-name = "qcom/sdm845/mi8/mba.mbn", "qcom/sdm845/mi8/modem.mbn";
+};
+
+&ipa {
+	qcom,gsi-loader = "self";
+	memory-region = <&ipa_fw_mem>;
+	firmware-name = "qcom/sdm845/mi8/ipa_fws.mbn";
+	status = "okay";
+};
+
+// REVIEW(Krey): Taken from beryllium, unsure if it's correct
+&i2c5 {
+	#dma-cells = <3>;
+	status="okay";
+
+	dmas = <&gpi_dma0 0 5 QCOM_GPI_I2C>,
+		   <&gpi_dma0 1 5 QCOM_GPI_I2C>;
+	dma-names = "tx", "rx";
+
+	/*smart PA*/
+	tas2559_codec: tas2559@4c{
+		#sound-dai-cells = <1>;
+		compatible = "ti,tas2559";
+		reg = <0x4c>;
+		ti,tas2559-reset-gpio = <&tlmm 12 0>;
+		ti,tas2560-reset-gpio = <&tlmm 76 0>;
+		ti,tas2559-addr = <0x4c>;
+		ti,tas2560-addr = <0x4d>;
+	};
+};
+
+// REVIEW(Krey): Taken from beryllium, unsure if it's correct
+&pm8998_gpios {
+	vol_up_pin_a: vol-up-active-state {
+		pins = "gpio6";
+		function = "normal";
+		input-enable;
+		bias-pull-up;
+		qcom,drive-strength = <PMIC_GPIO_STRENGTH_NO>;
+	};
+};
+
+// REVIEW(Krey): Taken from beryllium, unsure if it's correct
+&pmi8998_lpg {
+	status = "okay";
+
+	led@5 {
+		reg = <5>;
+		color = <LED_COLOR_ID_WHITE>;
+		function = LED_FUNCTION_STATUS;
+	};
+};
+
+// REVIEW(Krey): Taken from beryllium, unsure if it's correct
+&pmi8998_wled {
+	status = "okay";
+	qcom,current-boost-limit = <970>;
+	qcom,ovp-millivolt = <29600>;
+	qcom,current-limit-microamp = <20000>;
+	qcom,num-strings = <2>;
+	qcom,switching-freq = <600>;
+	qcom,external-pfet;
+	qcom,cabc;
+};
+
+// REVIEW(Krey): Taken from beryllium, unsure if it's correct as equuleus support Quick Charge 4.0 where beryllium only Quick Charge 3.0
+&pmi8998_charger {
+	status = "okay";
+
+	monitored-battery = <&battery>;
+};
+
+&pmi8998_fg {
+	status = "okay";
+
+	power-supplies = <&pmi8998_charger>;
+	monitored-battery = <&battery>;
+};
+
+&pm8998_resin {
+	linux,code = <KEY_VOLUMEDOWN>;
+	status = "okay";
+};
+
+&q6asmdai {
+	dai@0 {
+		reg = <0>;
+	};
+
+	dai@1 {
+		reg = <1>;
+	};
+
+	dai@2 {
+		reg = <2>;
+	};
+
+	dai@3 {
+		reg = <3>;
+	};
+};
+
+&pmi8998_haptics {
+	status = "okay";
+	qcom,wave-play-rate-us = <4878>;
+};
+
+&q6cvp {
+	status = "okay";
+};
+
+&q6cvs {
+	status = "okay";
+};
+
+&q6mvm {
+	status = "okay";
+};
+
+&qupv3_id_0 {
+	status = "okay";
+};
+
+
+&qupv3_id_1 {
+	status = "okay";
+};
+
+&qup_uart9_rx {
+	drive-strength = <2>;
+	bias-pull-up;
+};
+
+&qup_uart9_tx {
+	drive-strength = <2>;
+	bias-disable;
+};
+
+&tlmm {
+	gpio-reserved-ranges = <0 4>, <81 4>;
+
+	// REVIEW(Krey): Unsure..
+	// cam0_default: cam0_default {
+	// 	rst {
+	// 		pins = "gpio80";
+	// 		function = "gpio";
+
+	// 		drive-strength = <2>;
+	// 		bias-disable;
+	// 	};
+
+	// 	avdd {
+	// 		pins = "gpio40";
+	// 		function = "gpio";
+
+	// 		drive-strength = <2>;
+	// 		bias-disable;
+	// 	};
+
+	// 	mclk0 {
+	// 		pins = "gpio13";
+	// 		function = "cam_mclk";
+
+	// 		drive-strength = <2>;
+	// 		bias-disable;
+	// 	};
+	// };
+
+	// sdc2_default_state: sdc2-default-state {
+	// 	clk-pins {
+	// 		pins = "sdc2_clk";
+	// 		bias-disable;
+	// 		drive-strength = <16>;
+	// 	};
+
+	// 	cmd-pins {
+	// 		pins = "sdc2_cmd";
+	// 		bias-pull-up;
+	// 		drive-strength = <10>;
+	// 	};
+
+	// 	data-pins {
+	// 		pins = "sdc2_data";
+	// 		bias-pull-up;
+	// 		drive-strength = <10>;
+	// 	};
+	// };
+
+	// sdc2_card_det_n: sd-card-det-n-state {
+	// 	pins = "gpio126";
+	// 	function = "gpio";
+	// 	bias-pull-up;
+	// };
+
+	// ts_int_default: ts-int-default-state {
+	// 	pins = "gpio31";
+	// 	function = "gpio";
+	// 	drive-strength = <16>;
+	// 	bias-pull-down;
+	// 	input-enable;
+	// };
+
+	// ts_reset_default: ts-reset-default-state {
+	// 	pins = "gpio32";
+	// 	function = "gpio";
+	// 	drive-strength = <16>;
+	// 	output-high;
+	// };
+
+	// ts_int_sleep: ts-int-sleep-state {
+	// 	pins = "gpio31";
+	// 	function = "gpio";
+	// 	drive-strength = <2>;
+	// 	bias-pull-down;
+	// 	input-enable;
+	// };
+
+	// ts_reset_sleep: ts-reset-sleep-state {
+	// 	pins = "gpio32";
+	// 	function = "gpio";
+	// 	drive-strength = <2>;
+	// 	bias-disable;
+	// 	output-low;
+	// };
+};
+
+&uart6 {
+	status = "okay";
+
+	pinctrl-0 = <&qup_uart6_4pin>;
+
+	bluetooth {
+		compatible = "qcom,wcn3990-bt";
+
+		vddio-supply = <&vreg_s4a_1p8>; // VDD18_IO
+		vddxo-supply = <&vreg_l7a_1p8>; // VDD18_XTAL & VDD18_VCO_CH1
+		vddrf-supply = <&vreg_l17a_1p3>; // Goes to multiple Radio Frequeny related pins
+		vddch0-supply = <&vreg_l25a_3p3>; // VDD33_WL_CH0 ?
+		max-speed = <3200000>;
+	};
+};
+
+&uart9 {
+	label = "LS-UART1";
+	status = "okay";
+};
+
+&ufs_mem_hc {
+	status = "okay";
+
+	reset-gpios = <&tlmm 150 GPIO_ACTIVE_LOW>;
+
+	vcc-supply = <&vreg_l20a_2p95>;
+	vcc-max-microamp = <600000>;
+};
+
+// REVIEW(Krey): Taken from 5.12.8 port
+&ufs_mem_phy {
+	status = "okay";
+	vdda-phy-supply = <&vdda_ufs1_core>;
+	vdda-pll-supply = <&vdda_ufs1_1p2>;
+};
+
+&usb_1 {
+	status = "okay";
+};
+
+&usb_1_dwc3 {
+	dr_mode = "peripheral";
+};
+
+// REVIEW(Krey): Taken from 5.12.8 port
+&usb_1_hsphy {
+	status = "okay";
+
+	vdd-supply = <&vdda_usb1_ss_core>;
+	vdda-pll-supply = <&vdda_qusb_hs0_1p8>;
+	vdda-phy-dpdm-supply = <&vdda_qusb_hs0_3p1>;
+
+	qcom,imp-res-offset-value = <8>;
+	qcom,hstx-trim-value = <QUSB2_V2_HSTX_TRIM_21_6_MA>;
+	qcom,preemphasis-level = <QUSB2_V2_PREEMPHASIS_5_PERCENT>;
+	qcom,preemphasis-width = <QUSB2_V2_PREEMPHASIS_WIDTH_HALF_BIT>;
+};
+
+// REVIEW(Krey): Taken from 5.12.8 port
+&usb_1_qmpphy {
+	status = "okay";
+
+	vdda-phy-supply = <&vdda_usb1_ss_1p2>;
+	vdda-pll-supply = <&vdda_usb1_ss_core>;
+};
+
+&usb_2 {
+	status = "okay";
+};
+
+// REVIEW(Krey): Taken from 5.12.8 port
+&usb_2_dwc3 {
+	/*
+	 * Though the USB block on SDM845 can support host, there's no vbus
+	 * signal for this port on MTP. Thus (unless you have a non-compliant
+	 * hub that works without vbus) the only sensible thing is to force
+	 * peripheral mode.
+	 */
+	dr_mode = "peripheral";
+};
+
+// REVIEW(Krey): Taken from 5.12.8 port
+&usb_2_hsphy {
+	status = "okay";
+
+	vdd-supply = <&vdda_usb2_ss_core>;
+	vdda-pll-supply = <&vdda_qusb_hs0_1p8>;
+	vdda-phy-dpdm-supply = <&vdda_qusb_hs0_3p1>;
+
+	qcom,imp-res-offset-value = <8>;
+	qcom,hstx-trim-value = <QUSB2_V2_HSTX_TRIM_22_8_MA>;
+};
+
+// REVIEW(Krey): Taken from 5.12.8 port
+&usb_2_qmpphy {
+	status = "okay";
+
+	vdda-phy-supply = <&vdda_usb2_ss_1p2>;
+	vdda-pll-supply = <&vdda_usb2_ss_core>;
+};
+
+&venus {
+	status = "okay";
+	firmware-name = "qcom/sdm845/mi8/venus.mbn";
+};
+
+// REVIEW(Krey): Taken from beryllium, unsure..
+// &wcd9340 {
+// 	reset-gpios = <&tlmm 64 GPIO_ACTIVE_HIGH>;
+// 	vdd-buck-supply = <&vreg_s4a_1p8>;
+// 	vdd-buck-sido-supply = <&vreg_s4a_1p8>;
+// 	vdd-tx-supply = <&vreg_s4a_1p8>;
+// 	vdd-rx-supply = <&vreg_s4a_1p8>;
+// 	vdd-io-supply = <&vreg_s4a_1p8>;
+// 	qcom,micbias1-microvolt = <2700000>;
+// 	qcom,micbias2-microvolt = <1800000>;
+// 	qcom,micbias3-microvolt = <2700000>;
+// 	qcom,micbias4-microvolt = <2700000>;
+// };
+
+// REVIEW(Krey): Taken from 5.12.8 port
+&wifi {
+	status = "okay";
+
+	vdd-0.8-cx-mx-supply = <&vreg_l5a_0p8>;
+	vdd-1.8-xo-supply = <&vreg_l7a_1p8>;
+	vdd-1.3-rfa-supply = <&vreg_l17a_1p3>;
+	vdd-3.3-ch0-supply = <&vreg_l25a_3p3>;
+};
+
+// REVIEW(Krey): Taken from 5.12.8 port, not needed anymore?
+// /* PINCTRL - additions to nodes defined in sdm845.dtsi */
+
+// &qup_i2c10_default {
+// 	pinconf {
+// 		pins = "gpio55", "gpio56";
+// 		drive-strength = <2>;
+// 		bias-disable;
+// 	};
+// };
+
+// &qup_uart9_default {
+// 	pinconf-tx {
+// 		pins = "gpio4";
+// 		drive-strength = <2>;
+// 		bias-disable;
+// 	};
+
+// 	pinconf-rx {
+// 		pins = "gpio5";
+// 		drive-strength = <2>;
+// 		bias-pull-up;
+// 	};
+// };
+
+&slpi_pas {
+	firmware-name = "qcom/sdm845/mi8/slpi.mbn";
+	status = "okay";
+};
+
+&cci {
+	status = "okay";
+};
+
+// REVIEW(Krey): Used on beryllium which uses the same camera Sony IMX363
+&camss {
+	vdda-phy-supply = <&vreg_l1a_0p875>;
+	vdda-pll-supply = <&vreg_l26a_1p2>;
+
+	vdda-csi0-supply = <&vdda_mipi_csi0_0p9>;
+	vdda-csi1-supply = <&vdda_mipi_csi1_0p9>;
+	vdda-csi2-supply = <&vdda_mipi_csi2_0p9>;
+
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0>;
+			csiphy0_ep: endpoint {
+				clock-lanes = <7>;
+				data-lanes = <0 1 2 3>;
+				remote-endpoint = <&imx363_ep>;
+			};
+		};
+	};
+};
+
+// &cci_i2c0 {
+// 	camera@10 {
+// 		compatible = "sony,imx363";
+// 		reg = <0x10>;
+
+// 		reset-gpios = <&tlmm 80 0>;
+// 		pinctrl-names = "default";
+// 		pinctrl-0 = <&cam0_default>;
+
+// 		clocks = <&clock_camcc CAM_CC_MCLK0_CLK>;
+// 		clock-names = "xvclk";
+// 		clock-frequency = <24000000>;
+
+// 		vif-supply = <&cam_iovdd>;
+// 		vana-supply = <&cam0_avdd>;
+// 		vdig-supply = <&cam0_dvdd>;
+
+// 		orientation = <1>;
+// 		rotation = <270>;
+
+// 		status = "okay";
+
+// 		port {
+// 			imx363_ep: endpoint {
+// 				clock-lanes = <1>;
+// 				data-lanes = <1 2 3 4>;
+// 				link-frequencies = /bits/ 64 <636000000>;
+// 				remote-endpoint = <&csiphy0_ep>;
+// 			};
+// 		};
+// 	};
+// };
