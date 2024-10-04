@@ -539,6 +539,11 @@
 	};
 };
 
+&pm8998_resin {
+	linux,code = <KEY_VOLUMEDOWN>;
+	status = "okay";
+};
+
 &pmi8998_charger {
 	status = "okay";
 	monitored-battery = <&battery>;
