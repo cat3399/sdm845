@@ -208,6 +208,8 @@ static int drm_log_setup_modeset(struct drm_client_dev *client,
 	scanout->columns = width / scanout->font->width;
 	scanout->front_color = drm_draw_color_from_xrgb8888(0xffffff, format);
 	scanout->prefix_color = drm_draw_color_from_xrgb8888(0x4e9a06, format);
+
+	pr_info("drm_log: setup scanout %dx%d %p4cc\n", width, height, &format);
 	return 0;
 }
 
@@ -231,6 +233,8 @@ static void drm_log_init_client(struct drm_log *dlog)
 	int n_modeset = 0;
 
 	dlog->probed = true;
+
+	pr_info("drm_log: drm_log_init_client\n");
 
 	if (drm_client_modeset_probe(client, 0, 0))
 		return;
