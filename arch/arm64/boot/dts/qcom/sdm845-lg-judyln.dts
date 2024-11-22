@@ -8,6 +8,7 @@
 /dts-v1/;
 
 #include "sdm845-lg-common.dtsi"
+#include <dt-bindings/leds/common.h>
 
 / {
 	model = "LG G7 ThinQ";
@@ -37,6 +38,15 @@
 			interrupts = <89 IRQ_TYPE_LEVEL_LOW>;
 		};
 	};
+
+	battery: battery {
+		status = "okay";
+		compatible = "simple-battery";
+		charge-full-design-microamp-hours = <3000000>;
+		voltage-min-design-microvolt = <3200000>;
+		voltage-max-design-microvolt = <4400000>;
+	};
+
 };
 
 &adsp_pas {
@@ -61,8 +71,64 @@
 	thinq_key_default: thinq-key-default-state {
 		pins = "gpio89";
 		function = "gpio";
-
 		drive-strength = <2>;
 		bias-pull-up;
 	};
+};
+
+&pmi8998_charger {
+	status = "okay";
+	monitored-battery = <&battery>;
+};
+
+&pmi8998_fg {
+	status = "okay";
+	monitored-battery = <&battery>;
+	power-supplies = <&pmi8998_charger>;
+};
+
+&pmi8998_lpg {
+	status = "okay";
+
+	led@0 {
+		label = "blue";
+		reg = <3>;
+		color = <LED_COLOR_ID_BLUE>;
+		default-state = "off";
+	};
+
+	led@1 {
+		label = "green";
+		reg = <4>;
+		color = <LED_COLOR_ID_GREEN>;
+		default-state = "off";
+	};
+
+	led@2 {
+		label = "red";
+		reg = <5>;
+		color = <LED_COLOR_ID_RED>;
+		default-state = "off";
+	};
+};
+
+&pmi8998_wled {
+	status = "okay";
+	qcom,current-limit-microamp = <20000>;
+	qcom,num-strings = <4>;
+};
+
+&pmi8998_flash {
+	status = "okay";
+
+	led-0 {
+		label = "flash";
+		function = LED_FUNCTION_FLASH;
+		color = <LED_COLOR_ID_WHITE>;
+		led-sources = <1>;
+		led-max-microamp = <850000>;
+		flash-max-microamp = <850000>;
+		flash-max-timeout-us = <500000>;
+	};
+
 };
